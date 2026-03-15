@@ -1,5 +1,11 @@
 # UtilBase
 
+<p align="center">
+  <img src="app/static/images/utilbase-logo.png" alt="UtilBase logo" width="220">
+</p>
+
+# UtilBase
+
 Веб‑приложение для сервисных компаний: учёт клиентов, заявок,
 оборудования и работы выездных бригад. Основа для собственной CRM /
 FSM‑системы на Python + Flask.
