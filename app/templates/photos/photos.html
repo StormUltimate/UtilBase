@@ -1,0 +1,378 @@
+<!--Path: app/templates/photos/photos.html-->
+{% extends "base.html" %}
+{% block title %}Медиа{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <span class="nav-link active">
+            <i class="bi bi-images"></i> Медиа
+        </span>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Фото и медиа</h2>
+    <div class="btn-group">
+        <a href="{{ url_for('photos.upload_photo') }}" class="btn btn-primary">
+            <i class="bi bi-cloud-upload"></i> Загрузить
+        </a>
+        <a href="{{ url_for('photos.import_chat') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-telegram"></i> Импорт чата
+        </a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" action="{{ url_for('photos.photos_list') }}" class="row g-2 g-md-3 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label small mb-1">Клиент / адрес / телефон</label>
+                <input type="text" name="client" class="form-control form-control-sm"
+                       placeholder="Клиент, адрес или телефон"
+                       value="{{ search_client or '' }}">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">Дата загрузки</label>
+                <input type="date" name="date" class="form-control form-control-sm" value="{{ search_date or '' }}">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">Автор</label>
+                <input type="text" name="author" class="form-control form-control-sm"
+                       placeholder="Автор"
+                       value="{{ search_author or '' }}">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">Заявка</label>
+                <input type="text" name="request" class="form-control form-control-sm"
+                       placeholder="Номер заявки"
+                       value="{{ search_request or '' }}">
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">Описание</label>
+                <input type="text" name="description" class="form-control form-control-sm"
+                       placeholder="Текст в описании"
+                       value="{{ search_description or '' }}">
+            </div>
+            <div class="col-6 col-md-1">
+                <label class="form-label small mb-1">В ряд</label>
+                <select name="per_row" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="3" {% if items_per_row == '3' %}selected{% endif %}>3</option>
+                    <option value="4" {% if items_per_row == '4' %}selected{% endif %}>4</option>
+                    <option value="6" {% if items_per_row == '6' %}selected{% endif %}>6</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-auto">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel"></i> Применить
+                </button>
+                <a href="{{ url_for('photos.photos_list') }}" class="btn btn-outline-secondary btn-sm">
+                    Сбросить
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="text-muted small">
+        Найдено: {{ photos|length }} элементов
+    </div>
+    <div class="btn-group btn-group-sm">
+        <button type="button" class="btn btn-outline-secondary" id="select_all">
+            Выделить всё
+        </button>
+        <button type="button" class="btn btn-outline-danger" onclick="deleteSelected()">
+            Удалить выбранные
+        </button>
+    </div>
+</div>
+
+<div id="photo_grid" class="row g-3">
+    {% for photo in photos %}
+    <div class="col-6 col-md-{{ 12 // (items_per_row|int if items_per_row|int > 0 else 4) }}">
+        <div class="card h-100 shadow-sm photo-item"
+             data-index="{{ loop.index0 }}"
+             data-id="{{ photo.id }}"
+             data-src="{{ url_for('photos.view', id=photo.id) }}"
+             data-type="{{ photo.file_type }}"
+             data-client="{{ photo.client_name or '' }}"
+             data-address="{{ photo.client_address or '' }}"
+             data-author="{{ photo.author_name or '' }}"
+             data-request="{{ photo.request_number or '' }}"
+             data-date="{{ photo.upload_date.strftime('%d.%m.%Y %H:%M') if photo.upload_date else '' }}">
+            <div class="position-relative">
+                <input type="checkbox" class="form-check-input position-absolute m-2 photo_checkbox" value="{{ photo.id }}" style="z-index: 2;">
+                {% if photo.file_type == 'photo' %}
+                <img src="{{ url_for('photos.view', id=photo.id) }}"
+                     class="card-img-top"
+                     alt="Фото"
+                     style="height: 160px; object-fit: cover; cursor: pointer;"
+                     onclick="openGallery({{ loop.index0 }})">
+                {% elif photo.file_type == 'video' %}
+                <div class="bg-dark d-flex align-items-center justify-content-center"
+                     style="height:160px; cursor:pointer;"
+                     onclick="openGallery({{ loop.index0 }})">
+                    <i class="bi bi-play-circle text-white fs-1"></i>
+                </div>
+                {% else %}
+                <div class="bg-light d-flex align-items-center justify-content-center"
+                     style="height:160px;">
+                    <i class="bi bi-file-earmark fs-1 text-muted"></i>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-body py-2">
+                <div class="d-flex justify-content-between small mb-1">
+                    <span class="text-muted">
+                        {{ photo.upload_date.strftime('%d.%m.%Y %H:%M') if photo.upload_date else '—' }}
+                    </span>
+                    {% if photo.request_number %}
+                    <span class="badge bg-primary">Заявка {{ photo.request_number }}</span>
+                    {% endif %}
+                </div>
+                {% if photo.client_name %}
+                <div class="small">
+                    <i class="bi bi-person text-muted"></i> {{ photo.client_name }}
+                </div>
+                {% endif %}
+                {% if photo.client_address %}
+                <div class="small text-muted" title="{{ photo.client_address }}">
+                    <i class="bi bi-geo-alt"></i> {{ photo.client_address|truncate(40) }}
+                </div>
+                {% endif %}
+                {% if photo.author_name %}
+                <div class="small text-muted">
+                    <i class="bi bi-person-badge"></i> {{ photo.author_name }}
+                </div>
+                {% endif %}
+                {% if photo.description %}
+                <div class="small mt-1" title="{{ photo.description }}">
+                    {{ photo.description|truncate(60) }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="alert alert-secondary text-center py-5">
+            <i class="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
+            Медиа не найдено
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{# Полноэкранная галерея #}
+<div id="mediaOverlay" class="media-overlay d-none">
+    <div class="media-overlay-inner">
+        <button type="button" class="btn-close btn-close-white media-overlay-close" aria-label="Закрыть"></button>
+        <button type="button" class="btn btn-light btn-sm media-overlay-prev">
+            <i class="bi bi-chevron-left"></i>
+        </button>
+        <button type="button" class="btn btn-light btn-sm media-overlay-next">
+            <i class="bi bi-chevron-right"></i>
+        </button>
+        <div class="media-overlay-content">
+            <img id="overlayImage" class="media-overlay-image d-none" alt="Фото">
+            <video id="overlayVideo" class="media-overlay-video d-none" controls></video>
+        </div>
+        <div class="media-overlay-caption text-light small">
+            <div id="overlayMetaLine1"></div>
+            <div id="overlayMetaLine2"></div>
+        </div>
+    </div>
+</div>
+
+<form id="deleteForm" method="post" action="{{ url_for('photos.delete_photos') }}" class="d-none"></form>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.media-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 1055;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.media-overlay-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.media-overlay-content {
+    max-width: 100%;
+    max-height: calc(100% - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.media-overlay-image,
+.media-overlay-video {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+.media-overlay-close {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+}
+.media-overlay-prev,
+.media-overlay-next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.media-overlay-prev { left: 1.5rem; }
+.media-overlay-next { right: 1.5rem; }
+.media-overlay-caption {
+    position: absolute;
+    bottom: 1rem;
+    left: 0;
+    right: 0;
+    text-align: center;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const overlay = document.getElementById('mediaOverlay');
+    const overlayImg = document.getElementById('overlayImage');
+    const overlayVideo = document.getElementById('overlayVideo');
+    const meta1 = document.getElementById('overlayMetaLine1');
+    const meta2 = document.getElementById('overlayMetaLine2');
+    const btnPrev = overlay.querySelector('.media-overlay-prev');
+    const btnNext = overlay.querySelector('.media-overlay-next');
+    const btnClose = overlay.querySelector('.media-overlay-close');
+    const deleteForm = document.getElementById('deleteForm');
+
+    let items = Array.from(document.querySelectorAll('.photo-item'));
+    let currentIndex = 0;
+
+    window.openGallery = function (index) {
+        if (!items.length) return;
+        currentIndex = index;
+        showCurrent();
+        overlay.classList.remove('d-none');
+        document.body.classList.add('overflow-hidden');
+    };
+
+    function closeOverlay() {
+        overlay.classList.add('d-none');
+        document.body.classList.remove('overflow-hidden');
+        overlayImg.classList.add('d-none');
+        overlayVideo.classList.add('d-none');
+        overlayVideo.pause();
+    }
+
+    function showCurrent() {
+        const item = items[currentIndex];
+        if (!item) return;
+        const type = item.dataset.type;
+        const src = item.dataset.src;
+        const client = item.dataset.client || '';
+        const address = item.dataset.address || '';
+        const author = item.dataset.author || '';
+        const date = item.dataset.date || '';
+        const request = item.dataset.request || '';
+
+        overlayImg.classList.add('d-none');
+        overlayVideo.classList.add('d-none');
+
+        if (type === 'video') {
+            overlayVideo.src = src;
+            overlayVideo.classList.remove('d-none');
+        } else {
+            overlayImg.src = src;
+            overlayImg.classList.remove('d-none');
+        }
+
+        meta1.textContent = [
+            date,
+            client ? ' • ' + client : '',
+            address ? ' • ' + address : ''
+        ].join('');
+        meta2.textContent = [
+            author ? 'Автор: ' + author : '',
+            request ? (author ? ' • ' : '') + 'Заявка ' + request : ''
+        ].join('');
+    }
+
+    function next() {
+        if (!items.length) return;
+        currentIndex = (currentIndex + 1) % items.length;
+        showCurrent();
+    }
+
+    function prev() {
+        if (!items.length) return;
+        currentIndex = (currentIndex - 1 + items.length) % items.length;
+        showCurrent();
+    }
+
+    btnNext.addEventListener('click', next);
+    btnPrev.addEventListener('click', prev);
+    btnClose.addEventListener('click', closeOverlay);
+
+    overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) {
+            closeOverlay();
+        }
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (overlay.classList.contains('d-none')) return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeOverlay();
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            next();
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            prev();
+        }
+    });
+
+    // Выделить всё
+    const selectAllBtn = document.getElementById('select_all');
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function () {
+            document.querySelectorAll('.photo_checkbox').forEach(cb => cb.checked = true);
+        });
+    }
+
+    // Удаление выбранных
+    window.deleteSelected = function () {
+        const selected = Array.from(document.querySelectorAll('.photo_checkbox:checked')).map(cb => cb.value);
+        if (!selected.length) return;
+        if (!confirm('Удалить выбранные файлы (' + selected.length + ' шт.)?')) return;
+
+        deleteForm.innerHTML = '';
+        selected.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'photo_ids';
+            input.value = id;
+            deleteForm.appendChild(input);
+        });
+        deleteForm.submit();
+    };
+})();
+</script>
+{% endblock %}

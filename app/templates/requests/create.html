@@ -1,0 +1,146 @@
+<!-- File: V:\UtilBase\app\templates\requests\create.html -->
+
+{% extends "base.html" %}
+{% block title %}Создать заявку{% endblock %}
+
+{% block tabs %}
+<a href="{{ url_for('requests.requests_list') }}" class="tab">Список заявок</a>
+<a href="{{ url_for('requests.create_request') }}" class="tab active">Создать заявку</a>
+<a href="{{ url_for('requests.requests_today') }}" class="tab">Заявки сегодня</a>
+<a href="{{ url_for('requests.requests_calendar') }}" class="tab">Календарь</a>
+{% endblock %}
+
+{% block content %}
+<div class="requests-container">
+    <h1>Создать новую заявку</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <p class="{{ category }}">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('requests.create_request') }}">
+        {{ form.hidden_tag() }}
+        <div>
+            {{ form.client_id.label }}:
+            <select name="client_id" onchange="fetchContracts(this.value)">
+                <option value="">Выберите клиента</option>
+                {% for client in clients %}
+                <option value="{{ client.id }}">{{ client.full_name }} ({{ client.phone }})</option>
+                {% endfor %}
+            </select>
+            {{ form.create_new_client }} {{ form.create_new_client.label }}
+            <div id="new-client-fields" style="display: none;">
+                {{ form.new_client_full_name.label }}: {{ form.new_client_full_name }}
+                {{ form.new_client_phone.label }}: {{ form.new_client_phone }}
+                {{ form.new_client_address.label }}: {{ form.new_client_address }}
+                {{ form.new_client_role.label }}: {{ form.new_client_role }}
+                {{ form.new_client_email.label }}: {{ form.new_client_email }}
+            </div>
+        </div>
+        <div>
+            {{ form.service_type.label }}: {{ form.service_type }}
+        </div>
+        <div>
+            {{ form.warranty_reason.label }}: {{ form.warranty_reason }}
+        </div>
+        <div>
+            {{ form.contract_id.label }}:
+            <select name="contract_id">
+                <option value="">Выберите договор</option>
+                {% for contract in contracts %}
+                <option value="{{ contract.id }}">{{ contract.contract_number }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            {{ form.executor_id.label }}:
+            <select name="executor_id">
+                <option value="">Выберите исполнителя</option>
+                {% for worker in workers %}
+                <option value="{{ worker.id }}">{{ worker.full_name }} ({{ worker.phone }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            {{ form.equipment_id.label }}:
+            <select name="equipment_id">
+                <option value="">Выберите оборудование</option>
+                {% for equip in equipment %}
+                <option value="{{ equip.id }}">{{ equip.serial_number }} ({{ equip.model }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            {{ form.description.label }}: {{ form.description }}
+        </div>
+        <div>
+            {{ form.urgent_price.label }}: {{ form.urgent_price }}
+        </div>
+        <div>
+            {{ form.contract_regulated_price.label }}: {{ form.contract_regulated_price }}
+        </div>
+        <div>
+            {{ form.materials_cost.label }}: {{ form.materials_cost }}
+        </div>
+        <div>
+            {{ form.total_price.label }}: {{ form.total_price }}
+        </div>
+        <div>
+            {{ form.estimated_time.label }}: {{ form.estimated_time }}
+        </div>
+        <div>
+            {{ form.planned_date.label }}: {{ form.planned_date }}
+            <button type="button" onclick="setToday()">Сегодня</button>
+        </div>
+        {{ form.submit(class="button") }}
+    </form>
+    <a href="{{ url_for('requests.requests_list') }}" class="button">Назад</a>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .requests-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    input, select, textarea, .button {
+        padding: 8px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+        width: 100%;
+    }
+    .button {
+        background-color: #007bff;
+        color: #fff;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function setToday() {
+        document.querySelector('input[name="planned_date"]').value = new Date().toISOString().split('T')[0];
+    }
+    document.querySelector('input[name="create_new_client"]').addEventListener('change', (e) => {
+        document.getElementById('new-client-fields').style.display = e.target.checked ? 'block' : 'none';
+    });
+    async function fetchContracts(clientId) {
+        if (!clientId) return;
+        const response = await fetch(`/requests/api/contracts?client_id=${clientId}`);
+        const contracts = await response.json();
+        const select = document.querySelector('select[name="contract_id"]');
+        select.innerHTML = '<option value="">Выберите договор</option>';
+        contracts.forEach(contract => {
+            select.innerHTML += `<option value="${contract.id}">${contract.contract_number}</option>`;
+        });
+    }
+</script>
+{% endblock %}

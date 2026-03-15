@@ -1,0 +1,74 @@
+<!-- Path: app/templates/clients/map.html -->
+{% extends "base.html" %}
+{% block title %}Карта клиента #{{ client.id }}{% endblock %}
+
+{% block extra_css %}
+    <style>
+        #map { width: 100%; height: 500px; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <h5>Карта клиента: {{ client.full_name or 'Не указано' }}</h5>
+    <div id="map"></div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=3ef709e6-31eb-4c3c-a488-4f08ddbd5caf&lang=ru_RU" type="text/javascript"></script>
+    <script type="text/javascript">
+        ymaps.ready(function () {
+            var clientId = {{ client.id }};
+            var lat = {{ client.latitude or 'null' }};
+            var long = {{ client.longitude or 'null' }};
+            var name = '{{ client.full_name or 'Клиент' }}';
+            var address = '{{ client.address or '' }}';
+
+            if (!address || !address.trim()) {
+                alert('Адрес клиента не указан.');
+                return;
+            }
+
+            function initMap(lat, long) {
+                var myMap = new ymaps.Map('map', {
+                    center: [lat, long],
+                    zoom: 15
+                });
+                var myPlacemark = new ymaps.Placemark([lat, long], {
+                    hintContent: name,
+                    balloonContent: address || 'Адрес не указан'
+                });
+                myMap.geoObjects.add(myPlacemark);
+            }
+
+            if (!lat || !long) {
+                ymaps.geocode(address, { results: 1 }).then(function (res) {
+                    var firstGeoObject = res.geoObjects.get(0);
+                    if (firstGeoObject) {
+                        var coords = firstGeoObject.geometry.getCoordinates();
+                        lat = coords[0];
+                        long = coords[1];
+                        initMap(lat, long);
+                        fetch(`/clients/update_coords/${clientId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ lat: lat, long: long })
+                        }).then(response => {
+                            if (!response.ok) {
+                                console.error('Ошибка обновления координат');
+                            }
+                        });
+                    } else {
+                        alert('Не удалось найти координаты по адресу.');
+                    }
+                }).catch(function (err) {
+                    console.error('Ошибка геокодирования:', err);
+                    alert('Ошибка геокодирования. Проверьте консоль браузера для деталей.');
+                });
+            } else {
+                initMap(lat, long);
+            }
+        });
+    </script>
+{% endblock %}

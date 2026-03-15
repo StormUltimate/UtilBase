@@ -1,0 +1,73 @@
+<!-- Path: app/templates/base.html -->
+<!DOCTYPE html>
+<html lang="ru" class="{% if current_user.is_authenticated %}logged-in{% endif %}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="description" content="UtilBase — учёт заявок, клиентов и оборудования. Часть BaseofWork.">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <title>{% block title %}{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/hyper.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% if current_user.is_authenticated %}
+    <div class="sidebar">
+        <div class="sidebar-brand mb-2">
+            <img src="{{ url_for('static', filename='images/utilbase-logo.png') }}"
+                 alt="UtilBase"
+                 class="sidebar-logo">
+        </div>
+        <div class="sidebar-app-name mb-3">
+            UtilBase
+        </div>
+        {% if current_user.role == 'admin' %}
+        <a href="/clients/">Клиенты</a>
+        <a href="/requests/">Заявки</a>
+        <a href="/requests/calendar">План-график</a>
+        <a href="/photos/">Фото</a>
+        <a href="/map/">Карта</a>
+        <a href="/equipment/">Оборудование</a>
+        <a href="{{ url_for('admin.index') }}">Администрирование</a>
+        <a href="/regulations/">Справочный материал</a>
+        {% elif current_user.role in ['engineer', 'master'] %}
+        <a href="/requests/">Заявки</a>
+        <a href="/photos/">Фото</a>
+        <a href="/map/">Карта</a>
+        {% endif %}
+        <a href="{{ url_for('auth.logout') }}">Выход</a>
+    </div>
+    <div class="topbar">
+        <div class="d-flex align-items-center">
+            <form method="get" action="{{ url_for('search') }}" class="d-flex" role="search">
+                <input type="search" name="q" class="form-control me-2" placeholder="Поиск по клиентам, договорам, заявкам..." value="{{ request.args.get('q', '') }}" style="min-width: 220px;">
+                <button type="submit" class="btn btn-outline-light btn-sm"><i class="bi bi-search"></i></button>
+            </form>
+        </div>
+        <div class="d-flex align-items-center">
+            <img src="https://via.placeholder.com/40" class="rounded-circle me-2" alt="User">
+            <span>{{ current_user.username }} ({{ current_user.role }})</span>  <!-- Отладка роли -->
+        </div>
+    </div>
+    {% endif %}
+    <div class="content-wrapper">
+        {% block tabs_wrapper %}
+        {% block tabs %}{% endblock %}
+        {% endblock %}
+        <div class="card p-4">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('{{ url_for("static", filename="sw.js") }}').catch(function() {});
+      }
+    </script>
+</body>
+</html>

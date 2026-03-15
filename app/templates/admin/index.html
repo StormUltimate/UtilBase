@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Администрирование{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Администрирование</h2>
+
+<ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-users-btn" data-bs-toggle="tab" data-bs-target="#tab-users" type="button" role="tab">
+            Пользователи
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-workers-btn" data-bs-toggle="tab" data-bs-target="#tab-workers" type="button" role="tab">
+            Исполнители
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-demo-btn" data-bs-toggle="tab" data-bs-target="#tab-demo" type="button" role="tab">
+            Демо-данные
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="adminTabsContent">
+    <!-- Вкладка: Пользователи -->
+    <div class="tab-pane fade show active" id="tab-users" role="tabpanel">
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <a href="{{ url_for('users.add_user') }}" class="btn btn-success"><i class="bi bi-plus-lg"></i> Создать</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Имя пользователя</th>
+                        <th>Роль</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.role or '—' }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('users.edit_user', user_id=user.id) }}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil"></i></a>
+                            <form action="{{ url_for('users.delete_user', user_id=user.id) }}" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить пользователя {{ user.username }}?');"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-center text-muted py-3">Пользователей нет.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Вкладка: Исполнители -->
+    <div class="tab-pane fade" id="tab-workers" role="tabpanel">
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <a href="{{ url_for('workers.create_worker') }}" class="btn btn-success"><i class="bi bi-plus-lg"></i> Создать</a>
+            <span class="text-muted align-self-center small">Удаление — по кнопке в строке таблицы.</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>ФИО</th>
+                        <th>Телефон</th>
+                        <th>Роль</th>
+                        <th>Создан</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for worker in workers %}
+                    <tr>
+                        <td>{{ worker.id }}</td>
+                        <td>{{ worker.full_name }}</td>
+                        <td>{{ worker.phone or '—' }}</td>
+                        <td>
+                            {% if worker.role == 'master' %}<span class="badge bg-primary">Мастер</span>
+                            {% elif worker.role == 'engineer' %}<span class="badge bg-info text-dark">Инженер</span>
+                            {% else %}<span class="badge bg-secondary">—</span>{% endif %}
+                        </td>
+                        <td>{{ worker.created_at.strftime('%d.%m.%Y') if worker.created_at else '—' }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('workers.edit_worker', worker_id=worker.id) }}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil"></i></a>
+                            <form action="{{ url_for('workers.delete_worker', worker_id=worker.id) }}" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить исполнителя {{ worker.full_name }}?');"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-3">Исполнителей пока нет.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Вкладка: Демо-данные -->
+    <div class="tab-pane fade" id="tab-demo" role="tabpanel">
+        <p class="text-muted mb-3">Тестовые клиенты, договоры, заявки и исполнители. Записи фото без реальных файлов.</p>
+        <div class="d-flex flex-wrap gap-3">
+            <form method="post" action="{{ url_for('demo.create') }}" class="d-inline">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Создать демо-данные</button>
+            </form>
+            <form method="post" action="{{ url_for('demo.delete') }}" class="d-inline" onsubmit="return confirm('Удалить все демо-данные?');">
+                <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Удалить все демо-данные</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

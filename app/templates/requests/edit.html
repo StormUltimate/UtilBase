@@ -1,0 +1,150 @@
+<!-- Path: V:\UtilBase\app\templates\requests\edit.html -->
+{% extends "base.html" %}
+{% block title %}Редактировать заявку{% endblock %}
+
+{% block content %}
+    <h2 class="mb-3">Редактировать заявку #{{ req.id }}</h2>
+    <form method="POST" class="row g-3">
+        {{ form.hidden_tag() }}
+
+        <div class="col-12 col-md-4">
+            {{ form.client_id.label(class="form-label") }}
+            {{ form.client_id(class="form-select") }}
+        </div>
+        <div class="col-12 col-md-4">
+            {{ form.full_name.label(class="form-label") }}
+            {{ form.full_name(class="form-control") }}
+        </div>
+        <div class="col-12 col-md-4">
+            {{ form.phone.label(class="form-label") }}
+            {{ form.phone(class="form-control") }}
+        </div>
+        <div class="col-12">
+            {{ form.address.label(class="form-label") }}
+            {{ form.address(class="form-control") }}
+        </div>
+        <div class="col-12">
+            {{ form.description.label(class="form-label") }}
+            {{ form.description(class="form-control", rows="3") }}
+        </div>
+
+        <div class="col-12 col-md-4">
+            {{ form.type.label(class="form-label") }}
+            {{ form.type(class="form-select") }}
+        </div>
+        <div class="col-12 col-md-4">
+            {{ form.service_type.label(class="form-label") }}
+            {{ form.service_type(class="form-select") }}
+        </div>
+        <div class="col-12 col-md-4">
+            {{ form.status.label(class="form-label") }}
+            {{ form.status(class="form-select") }}
+        </div>
+
+        <div class="col-12 col-md-4">
+            {{ form.urgent_price.label(class="form-label") }}
+            {{ form.urgent_price(class="form-control") }}
+        </div>
+        <div class="col-12 col-md-4">
+            {{ form.contract_regulated_price.label(class="form-label") }}
+            {{ form.contract_regulated_price(class="form-control") }}
+        </div>
+        <div class="col-12 col-md-4">
+            {{ form.total_price.label(class="form-label") }}
+            {{ form.total_price(class="form-control") }}
+        </div>
+
+        <div class="col-12 col-md-4">
+            {{ form.planned_date.label(class="form-label") }}
+            {{ form.planned_date(class="form-control") }}
+        </div>
+        <div class="col-12 col-md-4">
+            {{ form.planned_start_time.label(class="form-label") }}
+            {{ form.planned_start_time(class="form-control") }}
+        </div>
+        <div class="col-12 col-md-4">
+            {{ form.planned_end_time.label(class="form-label") }}
+            {{ form.planned_end_time(class="form-control") }}
+        </div>
+
+        <div class="col-12 col-md-4">
+            {{ form.estimated_time.label(class="form-label") }}
+            {{ form.estimated_time(class="form-control") }}
+        </div>
+
+        <div class="col-12 col-md-4">
+            {{ form.mode.label(class="form-label") }}
+            {{ form.mode(class="form-select") }}
+        </div>
+
+        <div class="col-12">
+            {{ form.comment.label(class="form-label") }}
+            {{ form.comment(class="form-control", rows="2") }}
+        </div>
+
+        <div class="col-12 col-md-4 form-check mt-2">
+            {{ form.additional_resources_needed(class="form-check-input", id="additionalResourcesNeeded") }}
+            <label class="form-check-label" for="additionalResourcesNeeded">
+                {{ form.additional_resources_needed.label.text }}
+            </label>
+        </div>
+        <div class="col-12 col-md-8">
+            {{ form.additional_resources_reason.label(class="form-label") }}
+            {{ form.additional_resources_reason(class="form-control", rows="2") }}
+        </div>
+
+        <div class="col-12 col-md-4">
+            {{ form.workers_count.label(class="form-label") }}
+            {{ form.workers_count(class="form-control", id="workersCountInput", readonly=true) }}
+        </div>
+
+        <div class="col-12 col-md-8">
+            <label class="form-label">Исполнители</label>
+            <div class="row row-cols-1 row-cols-md-2 g-1">
+                {% for value, label in form.workers.choices %}
+                <div class="col">
+                    <div class="form-check">
+                        <input class="form-check-input worker-checkbox"
+                               type="checkbox"
+                               name="{{ form.workers.name }}"
+                               id="worker_{{ value }}"
+                               value="{{ value }}"
+                               {% if form.workers.data and value in form.workers.data %}checked{% endif %}>
+                        <label class="form-check-label" for="worker_{{ value }}">{{ label }}</label>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <small class="text-muted d-block mt-1">Выбрано исполнителей: <span id="workersCountText"></span></small>
+        </div>
+
+        <div class="col-12 mt-3">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('requests.view_request', id=req.id) }}" class="btn btn-outline-secondary ms-2">Отмена</a>
+        </div>
+    </form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    function updateWorkersCount() {
+        var checkboxes = document.querySelectorAll('.worker-checkbox');
+        var count = 0;
+        checkboxes.forEach(function (cb) {
+            if (cb.checked) count++;
+        });
+        var input = document.getElementById('workersCountInput');
+        var text = document.getElementById('workersCountText');
+        if (input) input.value = count;
+        if (text) text.textContent = count;
+    }
+    document.addEventListener('change', function (e) {
+        if (e.target.classList && e.target.classList.contains('worker-checkbox')) {
+            updateWorkersCount();
+        }
+    });
+    document.addEventListener('DOMContentLoaded', updateWorkersCount);
+})();
+</script>
+{% endblock %}

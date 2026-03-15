@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Поиск: {{ q or 'введите запрос' }}{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('clients.clients') }}">Клиенты</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('requests.list_requests') }}">Заявки</a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('clients.clients') }}"><i class="bi bi-house"></i> Главная</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Поиск</li>
+    </ol>
+</nav>
+
+<form method="get" action="{{ url_for('search') }}" class="mb-4">
+    <div class="input-group">
+        <input type="search" name="q" class="form-control form-control-lg" placeholder="Клиенты, договоры, оборудование, заявки..." value="{{ q or '' }}" autofocus>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Искать</button>
+    </div>
+</form>
+
+{% if q %}
+<div class="search-results">
+    {% set total = results.clients|length + results.contracts|length + results.equipment|length + results.requests|length %}
+    {% if total == 0 %}
+    <div class="alert alert-secondary">
+        <i class="bi bi-search"></i> По запросу «{{ q }}» ничего не найдено.
+    </div>
+    {% else %}
+    <p class="text-muted small mb-3">Найдено: {{ total }} записей</p>
+
+    {% if results.clients %}
+    <h5 class="mt-4"><i class="bi bi-people text-primary"></i> Клиенты</h5>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>ФИО / Название</th>
+                    <th>Адрес</th>
+                    <th>Телефон</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in results.clients %}
+                <tr>
+                    <td>{{ c.id }}</td>
+                    <td>{{ c.full_name or '—' }}</td>
+                    <td>{{ (c.address or '—')[:50] }}{% if (c.address or '')|length > 50 %}...{% endif %}</td>
+                    <td>{{ c.phone or '—' }}</td>
+                    <td><a href="{{ url_for('clients.client_detail', client_id=c.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right"></i></a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if results.contracts %}
+    <h5 class="mt-4"><i class="bi bi-file-earmark-text text-primary"></i> Договоры</h5>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>№</th>
+                    <th>Тип</th>
+                    <th>Клиент</th>
+                    <th>Период</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in results.contracts %}
+                <tr>
+                    <td>{{ c.id }}</td>
+                    <td>{{ c.contract_type or '—' }}</td>
+                    <td>{{ c.client.full_name if c.client else '—' }}</td>
+                    <td>{{ c.start_date.strftime('%d.%m.%Y') if c.start_date else '—' }} — {{ c.end_date.strftime('%d.%m.%Y') if c.end_date else '—' }}</td>
+                    <td><a href="{{ url_for('clients.client_detail', client_id=c.client_id) }}#tab-contracts" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right"></i></a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if results.equipment %}
+    <h5 class="mt-4"><i class="bi bi-tools text-primary"></i> Оборудование</h5>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>Марка / Модель</th>
+                    <th>Тип</th>
+                    <th>Клиент</th>
+                    <th>Серийный №</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in results.equipment %}
+                <tr>
+                    <td>{{ e.brand or '' }} {{ e.model or '—' }}</td>
+                    <td>{{ e.type or '—' }}</td>
+                    <td>{{ e.client.full_name if e.client else '—' }}</td>
+                    <td>{{ e.serial_number or '—' }}</td>
+                    <td><a href="{{ url_for('clients.client_detail', client_id=e.client_id) }}#tab-equipment" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right"></i></a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if results.requests %}
+    <h5 class="mt-4"><i class="bi bi-list-check text-primary"></i> Заявки</h5>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>№</th>
+                    <th>Описание</th>
+                    <th>Клиент</th>
+                    <th>Дата</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in results.requests %}
+                <tr>
+                    <td>{{ r.request_number or r.id }}</td>
+                    <td>{{ (r.description or '—')[:60] }}{% if (r.description or '')|length > 60 %}...{% endif %}</td>
+                    <td>{{ r.client.full_name if r.client else (r.full_name or '—') }}</td>
+                    <td>{{ r.created_at.strftime('%d.%m.%Y') if r.created_at else '—' }}</td>
+                    <td><a href="{{ url_for('requests.view_request', id=r.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right"></i></a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> Введите поисковый запрос в поле выше.
+</div>
+{% endif %}
+{% endblock %}

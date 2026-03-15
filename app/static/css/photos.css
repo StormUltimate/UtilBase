@@ -1,0 +1,178 @@
+/* File: V:\UtilBase\app\static\css\photos.css */
+.photos-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.photos-container h1 {
+    font-size: 24px;
+    margin-top: 20px;
+}
+
+.search-form {
+    background-color: #F5F5F5;
+    padding: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    height: 60px;
+    align-items: center;
+}
+
+.search-form input, .search-form select, .search-form button {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.search-form input[type="text"] {
+    width: 300px;
+}
+
+.search-form button {
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.upload-form {
+    background-color: #F5F5F5;
+    padding: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    height: 60px;
+    align-items: center;
+}
+
+.upload-form input, .upload-form select, .upload-form button {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.upload-form button {
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.action-form {
+    margin-bottom: 20px;
+}
+
+.action-form button {
+    padding: 8px;
+    margin-right: 10px;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.photo-grid {
+    display: grid;
+    gap: 10px;
+}
+input[type="range"] {
+    width: 150px;
+    cursor: pointer;
+}
+#size-value {
+    font-weight: normal;
+    margin-left: 10px;
+}
+
+.photo-gallery {
+    display: grid;
+    grid-template-columns: repeat(var(--items-per-row), 1fr);
+    gap: 20px;
+}
+.photo-item img {
+    width: 100%;
+    height: auto;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.photo-item input[type="checkbox"] {
+    margin-bottom: 5px;
+}
+
+.thumbnail {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.thumbnail:hover {
+    border-color: #FFD700;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+.modal-content {
+    margin: auto;
+    display: block;
+    max-width: 80%;
+    max-height: 80%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.close {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    color: white;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.prev, .next {
+    cursor: pointer;
+    position: absolute;
+    top: 50%;
+    width: auto;
+    padding: 16px;
+    color: white;
+    font-weight: bold;
+    font-size: 20px;
+    user-select: none;
+}
+
+.prev {
+    left: 0;
+}
+
+.next {
+    right: 0;
+}
+
+.success {
+    color: green;
+}
+
+.error {
+    color: red;
+}

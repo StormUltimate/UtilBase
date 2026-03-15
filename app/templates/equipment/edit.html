@@ -1,0 +1,128 @@
+<!-- Path: app/templates/equipment/edit.html -->
+{% extends "base.html" %}
+{% block title %}Редактировать оборудование #{{ equipment.id }}{% endblock %}
+
+{% block tabs %}
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('equipment.list_equipment') }}">Общий список</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('equipment.templates_list') }}">Шаблоны</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('equipment.add_equipment') }}">Добавить оборудование</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('equipment.import_templates') }}">Импорт шаблонов</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('equipment.hierarchy') }}">Иерархия</a>
+    </li>
+{% endblock %}
+
+{% block content %}
+
+    <h2>Редактировать оборудование #{{ equipment.id }}</h2>
+
+    <form method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.type.label }} {{ form.type(class="form-control", id="type") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.serial_number.label }} {{ form.serial_number(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.brand.label }} {{ form.brand(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.model.label }} {{ form.model(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.parent_id.label }} {{ form.parent_id(class="form-select") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.latitude.label }} {{ form.latitude(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.longitude.label }} {{ form.longitude(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.kind.label }} {{ form.kind(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.power.label }} {{ form.power(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.depth.label }} {{ form.depth(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.height.label }} {{ form.height(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.width.label }} {{ form.width(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.installation_type.label }} {{ form.installation_type(class="form-select") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.production_year.label }} {{ form.production_year(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.service_interval.label }} {{ form.service_interval(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.service_life.label }} {{ form.service_life(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.service_price.label }} {{ form.service_price(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.last_service_date.label }} {{ form.last_service_date(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.next_service_date.label }} {{ form.next_service_date(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.warranty_start_date.label }} {{ form.warranty_start_date(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.warranty_end_date.label }} {{ form.warranty_end_date(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.warranty_conditions.label }} {{ form.warranty_conditions(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.photo_path.label }} {{ form.photo_path(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.document_path.label }} {{ form.document_path(class="form-control") }}
+        </div>
+
+        {{ form.submit(class="btn btn-primary") }}
+    </form>
+
+{% endblock %}

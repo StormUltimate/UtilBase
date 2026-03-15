@@ -1,0 +1,47 @@
+# Path: app/templates/equipment/templates.html
+
+{% extends "base.html" %}
+{% block title %}Шаблоны оборудования{% endblock %}
+
+{% block tabs %}
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.list_equipment') }}">Общий список</a></li>
+    <li class="nav-item"><a class="nav-link active" href="{{ url_for('equipment.templates_list') }}">Шаблоны</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.add_equipment') }}">Добавить оборудование</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.import_templates') }}">Импорт шаблонов</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.hierarchy') }}">Иерархия</a></li>
+{% endblock %}
+
+{% block content %}
+    <h1>Шаблоны оборудования
+        <a href="{{ url_for('equipment.import_templates') }}" class="btn btn-secondary">Импорт шаблонов</a>
+        <a href="{{ url_for('equipment.templates_export') }}" class="btn btn-secondary">Экспорт Excel</a>
+    </h1>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Тип</th>
+                <th>Бренд</th>
+                <th>Модель</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in templates %}
+                <tr>
+                    <td>{{ t.id }}</td>
+                    <td>{{ t.type or 'Не указано' }}</td>
+                    <td>{{ t.brand or 'Не указано' }}</td>
+                    <td>{{ t.model or 'Не указано' }}</td>
+                    <td>
+                        <a href="{{ url_for('equipment.edit_template', id=t.id) }}" class="btn btn-sm btn-warning">Редактировать</a>
+                        <form method="POST" action="{{ url_for('equipment.delete_template', id=t.id) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Вы уверены?');">Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

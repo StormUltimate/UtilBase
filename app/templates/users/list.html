@@ -1,0 +1,47 @@
+<!-- Path: app/templates/users/list.html -->
+{% extends "base.html" %}
+{% block title %}Пользователи{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-pills mb-3 flex-wrap">
+    <li class="nav-item"><a class="nav-link active" href="{{ url_for('users.list_users') }}">Список</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('users.add_user') }}">Добавить</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('users.delete_user') }}">Удалить</a></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+    <h4 class="mb-4">Пользователи</h4>
+    <div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Имя пользователя</th>
+                <th>Роль</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td>{{ user.username }}</td>
+                <td>{{ user.role or 'Не указано' }}</td>
+                <td>
+                    <a href="{{ url_for('users.edit_user', user_id=user.id) }}" class="btn btn-primary btn-sm">Редактировать</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+{% endblock %}

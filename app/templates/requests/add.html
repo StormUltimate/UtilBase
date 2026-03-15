@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}Создать заявку{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('requests.list_requests') }}"><i class="bi bi-list-ul"></i> Список</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{{ url_for('requests.add_request') }}"><i class="bi bi-plus-lg"></i> Создать</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('requests.today_requests') }}"><i class="bi bi-calendar-day"></i> Сегодня</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('requests.calendar') }}"><i class="bi bi-calendar3"></i> Календарь</a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('requests.list_requests') }}"><i class="bi bi-list-check"></i> Заявки</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Создать</li>
+    </ol>
+</nav>
+
+<div class="card">
+    <div class="card-header py-3">
+        <h4 class="mb-0"><i class="bi bi-plus-circle text-primary"></i> Новая заявка</h4>
+        <ul class="nav nav-pills card-header-pills mt-2" id="wizardSteps">
+            <li class="nav-item"><span class="nav-link active" data-step="1"><i class="bi bi-person"></i> 1. Клиент</span></li>
+            <li class="nav-item"><span class="nav-link" data-step="2"><i class="bi bi-file-text"></i> 2. Описание</span></li>
+            <li class="nav-item"><span class="nav-link" data-step="3"><i class="bi bi-calendar-check"></i> 3. Приоритет</span></li>
+        </ul>
+    </div>
+    <div class="card-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" id="requestForm">
+            {{ form.hidden_tag() }}
+
+            {# Шаг 1: Клиент #}
+            <div class="wizard-step" id="step1">
+                <h5 class="mb-3"><i class="bi bi-person-fill text-primary"></i> Клиент</h5>
+                <div class="mb-3">
+                    <label class="form-label">Поиск клиента</label>
+                    <input type="text" class="form-control" id="client_search" placeholder="Начните вводить ФИО, телефон или адрес..." autocomplete="off">
+                    <div id="client_results" class="list-group mt-1" style="display:none; max-height:200px; overflow-y:auto;"></div>
+                    <input type="hidden" name="client_id" id="client_id" value="{{ form.client_id.data or 0 }}">
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.full_name.label.text }}</label>
+                        {{ form.full_name(class="form-control", id="full_name") }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.address.label.text }}</label>
+                        {{ form.address(class="form-control", id="address") }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.phone.label.text }}</label>
+                        {{ form.phone(class="form-control", id="phone") }}
+                    </div>
+                </div>
+            </div>
+
+            {# Шаг 2: Описание + тип #}
+            <div class="wizard-step d-none" id="step2">
+                <h5 class="mb-3"><i class="bi bi-file-text text-primary"></i> Описание и тип</h5>
+                <div class="mb-3">
+                    <label class="form-label">{{ form.description.label.text }} <span class="text-danger">*</span></label>
+                    {{ form.description(class="form-control", rows=4, required=True) }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">{{ form.type.label.text }}</label>
+                    {{ form.type(class="form-select") }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">{{ form.service_type.label.text }}</label>
+                    {{ form.service_type(class="form-select") }}
+                </div>
+                <p class="text-muted small"><i class="bi bi-images"></i> Фото можно прикрепить после создания заявки</p>
+            </div>
+
+            {# Шаг 3: Приоритет, дедлайн #}
+            <div class="wizard-step d-none" id="step3">
+                <h5 class="mb-3"><i class="bi bi-calendar-check text-primary"></i> Приоритет и дедлайн</h5>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.planned_date.label.text }} <span class="text-danger">*</span></label>
+                        {{ form.planned_date(class="form-control", type="date", required=True) }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label d-block">{{ form.workers.label.text }}</label>
+                        <div class="border rounded p-2" style="max-height: 140px; overflow-y: auto;">
+                            {% for value, label in form.workers.choices %}
+                            <div class="form-check">
+                                <input class="form-check-input worker-checkbox"
+                                       type="checkbox"
+                                       name="{{ form.workers.name }}"
+                                       id="worker_add_{{ value }}"
+                                       value="{{ value }}">
+                                <label class="form-check-label" for="worker_add_{{ value }}">{{ label }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" id="workersCountInput" name="{{ form.workers_count.name }}" value="{{ form.workers_count.data or 0 }}">
+                        <small class="text-muted d-block mt-1">Выбрано исполнителей: <span id="workersCountText"></span></small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.urgent_price.label.text }}</label>
+                        {{ form.urgent_price(class="form-control", type="number", step="0.01") }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">{{ form.total_price.label.text }}</label>
+                        {{ form.total_price(class="form-control", type="number", step="0.01") }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">{{ form.comment.label.text }}</label>
+                        {{ form.comment(class="form-control", rows=2) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mt-4">
+                <button type="button" class="btn btn-outline-secondary" id="btnPrev" style="display:none;">
+                    <i class="bi bi-arrow-left"></i> Назад
+                </button>
+                <button type="button" class="btn btn-primary ms-auto" id="btnNext">
+                    Далее <i class="bi bi-arrow-right"></i>
+                </button>
+                <button type="submit" class="btn btn-success" id="btnSubmit" style="display:none;">
+                    <i class="bi bi-check-lg"></i> Создать заявку
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+(function() {
+    var step = 1;
+    var totalSteps = 3;
+
+    function showStep(s) {
+        step = s;
+        document.querySelectorAll('.wizard-step').forEach(function(el, i) {
+            el.classList.toggle('d-none', i + 1 !== step);
+        });
+        document.querySelectorAll('#wizardSteps .nav-link').forEach(function(el, i) {
+            el.classList.toggle('active', i + 1 === step);
+        });
+        document.getElementById('btnPrev').style.display = step > 1 ? 'inline-block' : 'none';
+        document.getElementById('btnNext').style.display = step < totalSteps ? 'inline-block' : 'none';
+        document.getElementById('btnSubmit').style.display = step === totalSteps ? 'inline-block' : 'none';
+    }
+
+    document.getElementById('btnNext').onclick = function() {
+        if (step < totalSteps) showStep(step + 1);
+    };
+    document.getElementById('btnPrev').onclick = function() {
+        if (step > 1) showStep(step - 1);
+    };
+
+    // Client search autocomplete
+    var clientSearch = document.getElementById('client_search');
+    var clientResults = document.getElementById('client_results');
+    var clientIdInput = document.getElementById('client_id');
+    var debounce;
+    if (clientSearch && clientResults) {
+        clientSearch.addEventListener('input', function() {
+            clearTimeout(debounce);
+            var q = this.value.trim();
+            if (q.length < 2) { clientResults.style.display = 'none'; return; }
+            debounce = setTimeout(function() {
+                fetch('{{ url_for("requests.search_clients") }}?query=' + encodeURIComponent(q))
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        clientResults.innerHTML = '';
+                        if (data.results && data.results.length) {
+                            data.results.forEach(function(item) {
+                                var a = document.createElement('a');
+                                a.href = '#';
+                                a.className = 'list-group-item list-group-item-action';
+                                a.textContent = item.text;
+                                a.onclick = function(e) {
+                                    e.preventDefault();
+                                    clientIdInput.value = item.id;
+                                    clientSearch.value = item.text;
+                                    clientResults.style.display = 'none';
+                                    fetch('{{ url_for("requests.get_client", id=0) }}'.replace('0', item.id))
+                                        .then(function(r) { return r.json(); })
+                                        .then(function(d) {
+                                            if (d.full_name) document.getElementById('full_name').value = d.full_name;
+                                            if (d.address) document.getElementById('address').value = d.address;
+                                            if (d.phone) document.getElementById('phone').value = d.phone || '';
+                                        });
+                                };
+                                clientResults.appendChild(a);
+                            });
+                            clientResults.style.display = 'block';
+                        } else { clientResults.style.display = 'none'; }
+                    });
+            }, 300);
+        });
+        document.addEventListener('click', function() { clientResults.style.display = 'none'; });
+    }
+
+    // Подсчёт выбранных исполнителей
+    function updateWorkersCount() {
+        var checkboxes = document.querySelectorAll('.worker-checkbox');
+        var count = 0;
+        checkboxes.forEach(function (cb) {
+            if (cb.checked) count++;
+        });
+        var input = document.getElementById('workersCountInput');
+        var text = document.getElementById('workersCountText');
+        if (input) input.value = count;
+        if (text) text.textContent = count;
+    }
+    document.addEventListener('change', function (e) {
+        if (e.target.classList && e.target.classList.contains('worker-checkbox')) {
+            updateWorkersCount();
+        }
+    });
+    document.addEventListener('DOMContentLoaded', updateWorkersCount);
+})();
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.wizard-step { min-height: 200px; }
+#wizardSteps .nav-link { cursor: default; color: #6c757d; }
+#wizardSteps .nav-link.active { color: #0d6efd; font-weight: 600; }
+</style>
+{% endblock %}

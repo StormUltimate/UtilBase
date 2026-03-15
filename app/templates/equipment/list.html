@@ -1,0 +1,176 @@
+<!--Path: app/templates/equipment/list.html-->
+
+{% extends "base.html" %}
+{% block title %}Оборудование{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3">
+    {% if client %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('clients.client_detail', client_id=client.id) }}">Карточка клиента</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('equipment.client_passport', client_id=client.id) }}">Паспортизация</a>
+        </li>
+        <li class="nav-item">
+            <span class="nav-link active">Оборудование клиента</span>
+        </li>
+    {% else %}
+        <li class="nav-item">
+            <span class="nav-link active">Общий список оборудования</span>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('equipment.templates_list') }}">Шаблоны</a>
+        </li>
+    {% endif %}
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">
+        {% if client %}
+            Оборудование клиента: {{ client.full_name }}
+        {% else %}
+            Всё оборудование на обслуживании
+        {% endif %}
+    </h2>
+    <div class="d-flex gap-2">
+        {% if not client %}
+        <a href="{{ url_for('equipment.add_equipment') }}" class="btn btn-success btn-sm">
+            <i class="bi bi-plus-lg"></i> Добавить оборудование
+        </a>
+        {% endif %}
+        <a href="{{ url_for('equipment.export_excel', type=type_filter, power=power_filter) }}" class="btn btn-outline-warning btn-sm">
+            <i class="bi bi-file-earmark-spreadsheet"></i> Экспорт
+        </a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 g-md-3 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-1">Тип</label>
+                <select name="type" class="form-select form-select-sm">
+                    <option value="">Все</option>
+                    {% for t in types %}
+                    <option value="{{ t }}" {% if type_filter == t %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-1">Бренд</label>
+                <select name="brand" class="form-select form-select-sm">
+                    <option value="">Все</option>
+                    {% for b in brands %}
+                    <option value="{{ b }}" {% if brand_filter == b %}selected{% endif %}>{{ b }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-1">Модель</label>
+                <select name="model" class="form-select form-select-sm">
+                    <option value="">Все</option>
+                    {% for m in models %}
+                    <option value="{{ m }}" {% if model_filter == m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">Мощность</label>
+                <select name="power" class="form-select form-select-sm">
+                    <option value="">Все</option>
+                    {% for p in powers %}
+                    <option value="{{ p }}" {% if power_filter == p|string %}selected{% endif %}>{{ p }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label small mb-1">Поиск</label>
+                <input type="text" name="search" class="form-control form-control-sm"
+                       placeholder="Клиент, адрес, тип, модель, серийный..."
+                       value="{{ search_q or '' }}">
+            </div>
+            <div class="col-12 col-md-auto">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel"></i> Применить
+                </button>
+                <a href="{% if client %}{{ url_for('equipment.client_equipment_list', client_id=client.id) }}{% else %}{{ url_for('equipment.list_equipment') }}{% endif %}"
+                   class="btn btn-outline-secondary btn-sm">
+                    Сбросить
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Тип</th>
+                        <th>Бренд / модель</th>
+                        <th>Мощность</th>
+                        <th>Серийный №</th>
+                        <th>Клиент / организация</th>
+                        <th>Адрес</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in equipments %}
+                    <tr>
+                        <td>{{ e.type or '—' }}</td>
+                        <td>{{ e.brand or '—' }}{% if e.model %} / {{ e.model }}{% endif %}</td>
+                        <td>{{ e.power or '—' }}</td>
+                        <td>{{ e.serial_number or '—' }}</td>
+                        <td>
+                            {% if e.client %}
+                                {{ e.client.counterparty or 'Клиент' }} — {{ e.client.full_name }}
+                            {% else %}
+                                <span class="text-muted small">Без привязки (шаблон)</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if e.client %}
+                                <span title="{{ e.client.address }}">{{ e.client.address|truncate(40) }}</span>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('equipment.edit_equipment', id=e.id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form method="POST" action="{{ url_for('equipment.delete_equipment', id=e.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Удалить это оборудование?');">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            Оборудование не найдено.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} mt-3">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+{% endblock %}

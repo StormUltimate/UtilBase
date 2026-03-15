@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Справочный материал{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <span class="nav-link active">
+            <i class="bi bi-journal-text"></i> Справочный материал
+        </span>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-3">Инструкции по оборудованию</h2>
+
+<div class="row mb-3">
+    <div class="col-12 col-lg-8">
+        <form class="card card-body p-3 mb-3" method="get">
+            <div class="row g-2">
+                <div class="col-12">
+                    <label class="form-label small mb-1">Тип оборудования</label>
+                    <ul class="nav nav-pills mb-2">
+                        {% for code, label in equipment_types %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if current_type == code %}active{% endif %}"
+                               href="{{ url_for('regulations.index', equipment_type=code) }}">
+                                {{ label }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label small mb-1">Наименование / серия</label>
+                    <input type="text" name="name" value="{{ name_q or '' }}" class="form-control form-control-sm"
+                           placeholder="Например, котёл настенный">
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label small mb-1">Бренд</label>
+                    <input type="text" name="brand" value="{{ brand_q or '' }}" class="form-control form-control-sm"
+                           placeholder="Buderus, Grundfos...">
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label small mb-1">Модель</label>
+                    <input type="text" name="model" value="{{ model_q or '' }}" class="form-control form-control-sm"
+                           placeholder="Logamax, Magna3...">
+                </div>
+                <div class="col-6 col-md-4">
+                    <label class="form-label small mb-1">Мощность / kW</label>
+                    <input type="text" name="power" value="{{ power_q or '' }}" class="form-control form-control-sm"
+                           placeholder="24, 35...">
+                </div>
+                <div class="col-6 col-md-4">
+                    <label class="form-label small mb-1">Объём / л</label>
+                    <input type="text" name="volume" value="{{ volume_q or '' }}" class="form-control form-control-sm"
+                           placeholder="100, 200...">
+                </div>
+                <div class="col-12 col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm me-2">
+                        <i class="bi bi-search"></i> Найти
+                    </button>
+                    <a href="{{ url_for('regulations.index') }}" class="btn btn-outline-secondary btn-sm">
+                        Сбросить
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="col-12 col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <h6 class="mb-0"><i class="bi bi-upload"></i> Загрузка файла</h6>
+            </div>
+            <div class="card-body py-2">
+                <form method="post" enctype="multipart/form-data" class="d-flex flex-column flex-sm-row gap-2">
+                    <input type="file" name="file" class="form-control form-control-sm">
+                    <button type="submit" class="btn btn-primary btn-sm">Загрузить</button>
+                </form>
+                <small class="text-muted d-block mt-1">
+                    Рекомендуемый формат имени: тип_бренд_модель_мощность_объём.pdf
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12 col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> Инструкции и файлы ({{ files|length }})</h6>
+            </div>
+            <div class="card-body p-2">
+                {% if files %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Файл</th>
+                                <th class="text-end">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for file in files %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('static', filename='uploads/regulations/' + file) }}" download>
+                                        {{ file }}
+                                    </a>
+                                </td>
+                                <td class="text-end">
+                                    <form action="{{ url_for('regulations.delete_file', filename=file) }}" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted small mb-0">Нет файлов, соответствующих фильтрам.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <h6 class="mb-0"><i class="bi bi-link-45deg"></i> Ссылки на инструкции и производители ({{ links|length }})</h6>
+            </div>
+            <div class="card-body p-2">
+                {% if links %}
+                <ul class="list-group list-group-flush">
+                    {% for link in links %}
+                    <li class="list-group-item d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2">
+                        <div>
+                            <a href="{{ link.url }}" target="_blank">{{ link.name }}</a>
+                            <div class="text-muted small">{{ link.url }}</div>
+                        </div>
+                        <div class="d-flex gap-1">
+                            <form action="{{ url_for('regulations.index') }}" method="post" class="d-flex gap-1">
+                                <input type="hidden" name="edit_link" value="1">
+                                <input type="hidden" name="link_id" value="{{ link.id }}">
+                                <input type="text" name="name" value="{{ link.name }}" class="form-control form-control-sm" placeholder="Название" required>
+                                <input type="text" name="url" value="{{ link.url }}" class="form-control form-control-sm" placeholder="URL" required>
+                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </form>
+                            <form action="{{ url_for('regulations.index') }}" method="post">
+                                <input type="hidden" name="delete_link" value="1">
+                                <input type="hidden" name="link_id" value="{{ link.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted small mb-0">Нет ссылок, соответствующих фильтрам.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <h6 class="mb-0"><i class="bi bi-plus-circle"></i> Добавить ссылку</h6>
+            </div>
+            <div class="card-body py-2">
+                <form method="post" class="row g-2">
+                    <input type="hidden" name="add_link" value="1">
+                    <div class="col-12">
+                        <label class="form-label small mb-1">Название</label>
+                        <input type="text" name="name" class="form-control form-control-sm" placeholder="Например, Viessmann Vitodens 100-W" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small mb-1">URL</label>
+                        <input type="text" name="url" class="form-control form-control-sm" placeholder="https://..." required>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary btn-sm">Добавить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header py-2">
+                <h6 class="mb-0"><i class="bi bi-magic"></i> NLP‑поиск (spaCy)</h6>
+            </div>
+            <div class="card-body py-2">
+                <form method="post" class="d-flex gap-2">
+                    <input type="text" name="query" class="form-control form-control-sm" placeholder="Например: котёл Buderus 24 кВт">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">Анализ</button>
+                </form>
+                {% if nlp_result %}
+                <p class="small text-muted mt-2 mb-0">{{ nlp_result }}</p>
+                {% else %}
+                <p class="small text-muted mt-2 mb-0">
+                    Результаты анализа можно использовать как подсказки для фильтров выше.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

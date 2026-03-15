@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Карта объектов{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <span class="nav-link active">
+            <i class="bi bi-map"></i>
+            {% if client %}Карта клиента{% else %}Карта объектов{% endif %}
+        </span>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">
+        {% if client %}
+            Карта клиента: {{ client.full_name or ('Клиент #' ~ client.id) }}
+        {% else %}
+            Карта клиентов и оборудования
+        {% endif %}
+    </h2>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="post" class="row g-2 g-md-3 align-items-end">
+            {{ form.hidden_tag() }}
+            <div class="col-12 col-md-2">
+                {{ form.filter_type.label(class="form-label small mb-1") }}
+                {{ form.filter_type(class="form-select form-select-sm") }}
+            </div>
+            <div class="col-12 col-md-4 position-relative">
+                {{ form.client_search.label(class="form-label small mb-1") }}
+                {{ form.client_search(class="form-control form-control-sm", id="clientSearchInput", placeholder="Клиент: ФИО, адрес или телефон") }}
+                <div id="clientSuggestions" class="list-group position-absolute w-100 shadow-sm d-none" style="z-index: 1050; max-height: 240px; overflow-y: auto;"></div>
+            </div>
+            <div class="col-12 col-md-4">
+                {{ form.request_search.label(class="form-label small mb-1") }}
+                {{ form.request_search(class="form-control form-control-sm", placeholder="Заявка: номер или текст") }}
+            </div>
+            <div class="col-12 col-md-auto">
+                {{ form.submit(class="btn btn-primary btn-sm mt-3 mt-md-0") }}
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div id="map" style="height: 600px; width: 100%;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key }}&lang=ru_RU" type="text/javascript"></script>
+<script>
+    var myMap;
+    ymaps.ready(function () {
+        myMap = new ymaps.Map('map', {
+            center: [55.7558, 37.6173],
+            zoom: 10,
+            controls: ['zoomControl', 'fullscreenControl', 'geolocationControl']
+        });
+
+        var markers = {{ markers | tojson | safe }};
+        var bounds = [];
+
+        markers.forEach(function(marker) {
+            var coords = [marker.lat, marker.lon];
+            var placemark = new ymaps.Placemark(coords, {
+                hintContent: marker.popup,
+                balloonContent: marker.popup
+            });
+            myMap.geoObjects.add(placemark);
+            bounds.push(coords);
+        });
+
+        if (bounds.length) {
+            myMap.setBounds(bounds, { checkZoomRange: true, zoomMargin: 40 });
+        }
+    });
+
+    (function () {
+        const clients = {{ clients_for_search | tojson | safe }};
+        const input = document.getElementById('clientSearchInput');
+        const box = document.getElementById('clientSuggestions');
+        if (!input || !box || !clients) return;
+
+        function renderSuggestions(term) {
+            const q = term.trim().toLowerCase();
+            if (!q) {
+                box.classList.add('d-none');
+                box.innerHTML = '';
+                return;
+            }
+            const matches = clients.filter(function(c) {
+                const idStr = String(c.id || '');
+                const name = (c.full_name || '').toLowerCase();
+                const phone = (c.phone || '').toLowerCase();
+                const addr = (c.address || '').toLowerCase();
+                return idStr.includes(q) || name.includes(q) || phone.includes(q) || addr.includes(q);
+            }).slice(0, 10);
+            if (!matches.length) {
+                box.classList.add('d-none');
+                box.innerHTML = '';
+                return;
+            }
+            box.innerHTML = '';
+            matches.forEach(function(c) {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'list-group-item list-group-item-action small';
+                item.textContent = '#' + c.id + ' — ' + (c.full_name || '') + (c.address ? ' • ' + c.address : '') + (c.phone ? ' • ' + c.phone : '');
+                item.addEventListener('click', function () {
+                    input.value = c.full_name || c.phone || c.address || c.id;
+                    box.classList.add('d-none');
+                    box.innerHTML = '';
+                    if (typeof myMap !== 'undefined') {
+                        if (c.latitude && c.longitude) {
+                            myMap.setCenter([c.latitude, c.longitude], 14);
+                        } else if (c.address) {
+                            ymaps.geocode(c.address, { results: 1 }).then(function (res) {
+                                var firstGeoObject = res.geoObjects.get(0);
+                                if (firstGeoObject) {
+                                    var coords = firstGeoObject.geometry.getCoordinates();
+                                    myMap.setCenter(coords, 14);
+                                }
+                            });
+                        }
+                    }
+                });
+                box.appendChild(item);
+            });
+            box.classList.remove('d-none');
+        }
+
+        input.addEventListener('input', function () {
+            renderSuggestions(this.value);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!box.contains(e.target) && e.target !== input) {
+                box.classList.add('d-none');
+            }
+        });
+    })();
+</script>
+{% endblock %}

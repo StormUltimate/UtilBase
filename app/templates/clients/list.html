@@ -1,0 +1,276 @@
+<!-- Path: templates/clients/list.html -->
+
+{% extends "base.html" %}
+{% block title %}Клиенты{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <span class="nav-link active">Список клиентов</span>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+    <h2 class="mb-4 d-flex justify-content-between align-items-center">
+        <span>Клиенты</span>
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addClientModal">
+            Добавить клиента
+        </button>
+    </h2>
+
+    <form method="get" class="mb-4">
+        <div class="row g-2">
+            <div class="col-md-5">
+                <input type="text" name="search" class="form-control" placeholder="Поиск по ФИО, адресу или телефону" value="{{ search_term }}">
+            </div>
+            <div class="col-md-3">
+                <select name="counterparty_filter" class="form-select">
+                    {% for cp in counterparties %}
+                        <option value="{{ cp }}" {% if counterparty_filter == cp %}selected{% endif %}>{{ cp or 'Не указано' }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Поиск</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="mb-4 d-flex gap-2">
+        <a href="{{ url_for('clients.export') }}" class="btn btn-success">Экспорт Excel</a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importModal">Импорт Excel</button>
+    </div>
+
+    <div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Контрагент</th>
+                <th>ФИО</th>
+                <th>Адрес</th>
+                <th>Телефон</th>
+                <th>Email</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for client in clients %}
+            <tr>
+                <td>{{ client.id }}</td>
+                <td>{{ client.counterparty or 'Не указано' }}</td>
+                <td>{{ client.full_name or 'Не указано' }}</td>
+                <td>{{ client.address or 'Не указано' }}</td>
+                <td>{{ client.phone or 'Не указано' }}</td>
+                <td>{{ client.email or 'Не указано' }}</td>
+                <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('clients.client_detail', client_id=client.id) }}" class="btn btn-primary">Подробно</a>
+                        <a href="{{ url_for('clients.edit_client', client_id=client.id) }}" class="btn btn-outline-primary">Редактировать</a>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#mapModal"
+                                data-id="{{ client.id }}" data-lat="{{ client.latitude }}" data-long="{{ client.longitude }}"
+                                data-name="{{ client.full_name }}" data-address="{{ client.address }}">На карте</button>
+                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteClientModal"
+                                data-id="{{ client.id }}" data-name="{{ client.full_name }}">
+                            Удалить
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+    <!-- Модал: Добавить клиента -->
+    <div class="modal fade" id="addClientModal" tabindex="-1" aria-labelledby="addClientModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addClientModalLabel">Добавить клиента</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ url_for('clients.add_client') }}" method="post">
+                    <div class="modal-body">
+                        {{ client_form.hidden_tag() }}
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                {{ client_form.full_name.label(class="form-label") }}
+                                {{ client_form.full_name(class="form-control") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ client_form.phone.label(class="form-label") }}
+                                {{ client_form.phone(class="form-control") }}
+                            </div>
+                            <div class="col-12">
+                                {{ client_form.address.label(class="form-label") }}
+                                {{ client_form.address(class="form-control") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ client_form.representative_name.label(class="form-label") }}
+                                {{ client_form.representative_name(class="form-control") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ client_form.representative_phone.label(class="form-label") }}
+                                {{ client_form.representative_phone(class="form-control") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ client_form.email.label(class="form-label") }}
+                                {{ client_form.email(class="form-control") }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        {{ client_form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модал для импорта -->
+    <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importModalLabel">Импорт клиентов</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form action="{{ url_for('clients.import_excel') }}" method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="file" class="form-label">Выберите .xlsx файл</label>
+                            <input type="file" name="file" id="file" class="form-control" accept=".xlsx">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Импорт</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модал: Удалить клиента -->
+    <div class="modal fade" id="deleteClientModal" tabindex="-1" aria-labelledby="deleteClientModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteClientModalLabel">Удалить клиента</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ url_for('clients.delete_client') }}" method="post">
+                    <div class="modal-body">
+                        {{ delete_form.hidden_tag() }}
+                        <p class="mb-3">Вы уверены, что хотите удалить клиента <strong id="deleteClientName"></strong>?</p>
+                        <div class="mb-3">
+                            {{ delete_form.client_id.label(class="form-label") }}
+                            {{ delete_form.client_id(class="form-control", id="deleteClientIdInput") }}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        {{ delete_form.submit(class="btn btn-danger") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модал для карты -->
+    <div class="modal fade" id="mapModal" tabindex="-1" aria-labelledby="mapModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="mapModalLabel">Карта клиента</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="map" style="width: 100%; height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=3ef709e6-31eb-4c3c-a488-4f08ddbd5caf&lang=ru_RU" type="text/javascript"></script>
+    <script type="text/javascript">
+        ymaps.ready(function () {
+            var mapModal = document.getElementById('mapModal');
+            var myMap;
+            mapModal.addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                var clientId = button.getAttribute('data-id');
+                var lat = parseFloat(button.getAttribute('data-lat')) || null;
+                var long = parseFloat(button.getAttribute('data-long')) || null;
+                var name = button.getAttribute('data-name');
+                var address = button.getAttribute('data-address');
+                if (!address || !address.trim()) {
+                    alert('Адрес клиента не указан.');
+                    var modalInstance = bootstrap.Modal.getInstance(mapModal);
+                    modalInstance.hide();
+                    return;
+                }
+                function initMap(lat, long) {
+                    myMap = new ymaps.Map('map', {
+                        center: [lat, long],
+                        zoom: 15
+                    });
+                    var myPlacemark = new ymaps.Placemark([lat, long], {
+                        hintContent: name || 'Клиент',
+                        balloonContent: address || 'Адрес не указан'
+                    });
+                    myMap.geoObjects.add(myPlacemark);
+                }
+                if (!lat || !long) {
+                    ymaps.geocode(address, { results: 1 }).then(function (res) {
+                        var firstGeoObject = res.geoObjects.get(0);
+                        if (firstGeoObject) {
+                            var coords = firstGeoObject.geometry.getCoordinates();
+                            lat = coords[0];
+                            long = coords[1];
+                            initMap(lat, long);
+                            fetch(`/clients/update_coords/${clientId}`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ lat: lat, long: long })
+                            }).then(response => {
+                                if (!response.ok) {
+                                    console.error('Ошибка обновления координат');
+                                }
+                            });
+                        } else {
+                            alert('Не удалось найти координаты по адресу.');
+                            var modalInstance = bootstrap.Modal.getInstance(mapModal);
+                            modalInstance.hide();
+                        }
+                    }).catch(function (err) {
+                        console.error('Ошибка геокодирования:', err);
+                        alert('Ошибка геокодирования. Проверьте консоль браузера для деталей.');
+                        var modalInstance = bootstrap.Modal.getInstance(mapModal);
+                        modalInstance.hide();
+                    });
+                } else {
+                    initMap(lat, long);
+                }
+            });
+            mapModal.addEventListener('hidden.bs.modal', function (event) {
+                if (myMap) {
+                    myMap.destroy();
+                    myMap = null;
+                }
+            });
+        });
+    </script>
+{% endblock %}

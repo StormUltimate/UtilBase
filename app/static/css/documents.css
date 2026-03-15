@@ -1,0 +1,12 @@
+.documents-container { padding: 20px; }
+h1 { font-size: 16px; margin-bottom: 20px; }
+.search-form, .upload-form, .action-form { margin-bottom: 20px; }
+.search-form input, .upload-form input, .upload-form button, .action-form button {
+    padding: 5px; margin-right: 10px; font-size: 14px;
+}
+.upload-form button, .action-form button { background: #007BFF; color: #fff; border: none; cursor: pointer; }
+.upload-form button:hover, .action-form button:hover { background: #0056b3; }
+.document-grid { display: grid; grid-template-columns: repeat(auto-fill, 150px); gap: 10px; }
+.document-item { text-align: center; }
+.error { color: #FF0000; }
+.success { color: #28a745; }

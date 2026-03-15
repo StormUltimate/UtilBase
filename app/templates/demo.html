@@ -1,0 +1,304 @@
+<!-- Path: app/templates/demo.html — Демо-режим без логина -->
+{% extends "base.html" %}
+{% block title %}UtilBase — Демо{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Кнопки в демо: при disabled остаются визуально приятными */
+.client-detail-card .btn:disabled {
+    opacity: 0.85;
+    cursor: not-allowed;
+}
+.client-detail-card .btn-primary:disabled {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+.client-detail-card .btn-success:disabled {
+    background-color: #198754;
+    border-color: #198754;
+}
+.client-detail-card .btn-outline-primary:disabled,
+.client-detail-card .btn-outline-secondary:disabled {
+    border-style: solid;
+}
+</style>
+{% endblock %}
+
+{% block tabs_wrapper %}
+<nav class="navbar navbar-light bg-light border-bottom px-3 py-2">
+    <span class="navbar-brand mb-0">
+        <i class="bi bi-speedometer2 text-primary"></i> UtilBase — Демо-режим
+    </span>
+    <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-box-arrow-in-right"></i> Вход в систему
+    </a>
+</nav>
+{% endblock %}
+
+{% block content %}
+{# Хлебные крошки #}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/demo"><i class="bi bi-people"></i> Демо</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ client.full_name or 'Клиент' }}</li>
+    </ol>
+</nav>
+
+<div class="alert alert-info py-2 mb-3">
+    <i class="bi bi-info-circle"></i> Это демонстрационная страница с фейковыми данными. Для работы с реальными данными <a href="{{ url_for('auth.login') }}">войдите в систему</a>.
+</div>
+
+{# Основная карточка клиента #}
+<div class="card client-detail-card">
+    <div class="card-header bg-white py-3">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <h4 class="mb-0 me-2"><i class="bi bi-person-fill text-primary"></i> {{ client.full_name or 'Без имени' }}</h4>
+            {% if client.counterparty %}
+            <span class="badge bg-secondary">{{ client.counterparty }}</span>
+            {% endif %}
+            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Договор активен</span>
+            <button type="button" class="btn btn-sm btn-outline-primary ms-auto" disabled title="Демо-режим">
+                <i class="bi bi-pencil"></i> Редактировать
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Демо-режим">
+                <i class="bi bi-geo-alt"></i> На карте
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <ul class="nav nav-tabs nav-tabs-detail mb-3" id="clientTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-general-btn" data-bs-toggle="tab" data-bs-target="#tab-general" type="button" role="tab">
+                    <i class="bi bi-person-lines-fill"></i> Общая информация
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-contracts-btn" data-bs-toggle="tab" data-bs-target="#tab-contracts" type="button" role="tab">
+                    <i class="bi bi-file-earmark-text"></i> Договора
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-equipment-btn" data-bs-toggle="tab" data-bs-target="#tab-equipment" type="button" role="tab">
+                    <i class="bi bi-tools"></i> Оборудование
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-requests-btn" data-bs-toggle="tab" data-bs-target="#tab-requests" type="button" role="tab">
+                    <i class="bi bi-list-check"></i> Заявки
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-photos-btn" data-bs-toggle="tab" data-bs-target="#tab-photos" type="button" role="tab">
+                    <i class="bi bi-images"></i> Фото
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="clientTabsContent">
+            {# Общая информация #}
+            <div class="tab-pane fade show active" id="tab-general" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4"><i class="bi bi-telephone text-muted"></i> Телефон</dt>
+                            <dd class="col-sm-8">{{ client.phone or '—' }}</dd>
+                            <dt class="col-sm-4"><i class="bi bi-envelope text-muted"></i> Email</dt>
+                            <dd class="col-sm-8">{{ client.email or '—' }}</dd>
+                            <dt class="col-sm-4"><i class="bi bi-geo-alt text-muted"></i> Адрес</dt>
+                            <dd class="col-sm-8">{{ client.address or '—' }}</dd>
+                            <dt class="col-sm-4"><i class="bi bi-person-badge text-muted"></i> Представитель</dt>
+                            <dd class="col-sm-8">{{ client.representative_name or '—' }}</dd>
+                            <dt class="col-sm-4"><i class="bi bi-calendar text-muted"></i> Дата создания</dt>
+                            <dd class="col-sm-8">{{ client.created_at.strftime('%Y-%m-%d %H:%M') if client.created_at else '—' }}</dd>
+                        </dl>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="alert alert-success py-2 mb-2">
+                            <i class="bi bi-file-earmark-check"></i> Договор до {{ contracts[0].end_date.strftime('%d.%m.%Y') if contracts else '—' }}
+                            <span class="badge bg-success ms-1">Активен</span>
+                        </div>
+                        <h6 class="mt-3"><i class="bi bi-list-check"></i> Последние заявки</h6>
+                        {% for req in requests[:3] %}
+                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                            <span>
+                                {% if req.type == 'аварийная' %}
+                                <span class="badge bg-danger me-1">Аварийная</span>
+                                {% elif req.type == 'ремонтная' %}
+                                <span class="badge bg-warning text-dark me-1">Ремонтная</span>
+                                {% else %}
+                                <span class="badge bg-info me-1">{{ req.type or 'Заявка' }}</span>
+                                {% endif %}
+                                {{ req.request_number or req.id }} — {{ (req.description or '')[:40] }}{% if (req.description or '')|length > 40 %}...{% endif %}
+                            </span>
+                        </div>
+                        {% else %}
+                        <p class="text-muted small">Нет заявок</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            {# Договора #}
+            <div class="tab-pane fade" id="tab-contracts" role="tabpanel">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button type="button" class="btn btn-primary" disabled title="Демо-режим">
+                        <i class="bi bi-plus-lg"></i> Добавить договор
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th><i class="bi bi-hash"></i> № договора</th>
+                                <th><i class="bi bi-tag"></i> Тип</th>
+                                <th><i class="bi bi-calendar"></i> Дата начала</th>
+                                <th><i class="bi bi-calendar"></i> Дата окончания</th>
+                                <th><i class="bi bi-currency-ruble"></i> Сумма</th>
+                                <th><i class="bi bi-circle-fill"></i> Статус</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for contract in contracts %}
+                            <tr>
+                                <td>{{ contract.id }}</td>
+                                <td>{{ contract.contract_type or '—' }}</td>
+                                <td>{{ contract.start_date.strftime('%d.%m.%Y') if contract.start_date else '—' }}</td>
+                                <td>{{ contract.end_date.strftime('%d.%m.%Y') if contract.end_date else '—' }}</td>
+                                <td>{{ '{:,.0f}'.format(contract.total_price or 0)|replace(',', ' ') }} ₽</td>
+                                <td>
+                                    {% if contract.end_date and contract.end_date.date() >= now_date %}
+                                    <span class="badge bg-success">Активен</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">Просрочен</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-success" disabled title="Демо-режим">
+                                        <i class="bi bi-printer"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {# Оборудование #}
+            <div class="tab-pane fade" id="tab-equipment" role="tabpanel">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button type="button" class="btn btn-primary" disabled title="Демо-режим">
+                        <i class="bi bi-plus-lg"></i> Добавить оборудование
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" disabled title="Демо-режим">
+                        <i class="bi bi-pencil"></i> Полная форма
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th><i class="bi bi-tag"></i> Марка</th>
+                                <th><i class="bi bi-lightning"></i> Мощность</th>
+                                <th><i class="bi bi-calendar"></i> Год</th>
+                                <th><i class="bi bi-upc-scan"></i> Серийный №</th>
+                                <th><i class="bi bi-calendar-plus"></i> Дата установки</th>
+                                <th><i class="bi bi-file-earmark-text"></i> Договор</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for eq in equipment %}
+                            <tr>
+                                <td>{{ eq.brand or '' }} {{ eq.model or eq.type or '—' }}</td>
+                                <td>{{ eq.power or '—' }}</td>
+                                <td>{{ eq.production_year or '—' }}</td>
+                                <td>{{ eq.serial_number or '—' }}</td>
+                                <td>{{ eq.created_at.strftime('%d.%m.%Y') if eq.created_at else '—' }}</td>
+                                <td>{{ eq.contract.contract_type if eq.contract_id else '—' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {# Заявки #}
+            <div class="tab-pane fade" id="tab-requests" role="tabpanel">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button type="button" class="btn btn-primary btn-sm" disabled title="Демо-режим">
+                        <i class="bi bi-plus-lg"></i> Новая заявка
+                    </button>
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-arrow-right-circle"></i> Перейти к заявкам
+                    </a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th><i class="bi bi-hash"></i> №</th>
+                                <th><i class="bi bi-tag"></i> Тип</th>
+                                <th><i class="bi bi-text-left"></i> Описание</th>
+                                <th><i class="bi bi-currency-ruble"></i> Сумма</th>
+                                <th><i class="bi bi-circle"></i> Статус</th>
+                                <th><i class="bi bi-calendar"></i> Дата</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for req in requests %}
+                            <tr>
+                                <td>{{ req.request_number or req.id }}</td>
+                                <td>
+                                    {% if req.type == 'аварийная' %}
+                                    <span class="badge bg-danger">{{ req.type }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ req.type or '—' }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ req.description or '—' }}</td>
+                                <td>{{ req.urgent_price or req.total_price or 0 }}</td>
+                                <td><span class="badge bg-{{ 'success' if req.status.name == 'closed' else 'warning' if req.status.name == 'overdue' else 'secondary' }}">{{ req.status.value }}</span></td>
+                                <td>{{ req.created_at.strftime('%d.%m.%Y') if req.created_at else '—' }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" disabled title="Демо-режим">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {# Фото #}
+            <div class="tab-pane fade" id="tab-photos" role="tabpanel">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button type="button" class="btn btn-primary" disabled title="Демо-режим">
+                        <i class="bi bi-cloud-upload"></i> Загрузить фото
+                    </button>
+                </div>
+                <div class="client-photo-gallery">
+                    {% for photo in photos %}
+                    <div>
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px; border-radius: 8px 8px 0 0;">
+                                <i class="bi bi-image fs-1 text-muted"></i>
+                            </div>
+                            <div class="card-body py-2">
+                                <small class="text-muted">{{ photo.upload_date.strftime('%d.%m.%Y') if photo.upload_date else '—' }}</small>
+                                {% if photo.description %}<p class="card-text small mb-0">{{ photo.description[:30] }}{% if photo.description|length > 30 %}...{% endif %}</p>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4 w-100">Нет фото</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

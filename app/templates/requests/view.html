@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Заявка #{{ req.request_number or req.id }}{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('requests.list_requests') }}"><i class="bi bi-list-ul"></i> Список</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('requests.add_request') }}"><i class="bi bi-plus-lg"></i> Создать</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('requests.today_requests') }}"><i class="bi bi-calendar-day"></i> Сегодня</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('requests.calendar') }}"><i class="bi bi-calendar3"></i> Календарь</a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('requests.list_requests') }}"><i class="bi bi-list-check"></i> Заявки</a></li>
+        <li class="breadcrumb-item active" aria-current="page">#{{ req.request_number or req.id }}</li>
+    </ol>
+</nav>
+
+{% set req_type = req.type or (req.service_type.value if req.service_type else '') %}
+{% set type_badge = 'danger' if req_type in ['аварийная', 'emergency'] else ('warning' if req_type in ['ремонтная', 'repair'] else 'success') %}
+
+{# Основная карточка #}
+<div class="card mb-4">
+    <div class="card-header bg-white py-3 d-flex flex-wrap align-items-center gap-2">
+        <h4 class="mb-0"><i class="bi bi-ticket-perforated text-primary"></i> Заявка #{{ req.request_number or req.id }}</h4>
+        <span class="badge bg-{{ type_badge }}">
+            {% if req_type in ['аварийная', 'emergency'] %}<i class="bi bi-exclamation-triangle"></i> Аварийная
+            {% elif req_type in ['ремонтная', 'repair'] %}<i class="bi bi-tools"></i> Ремонтная
+            {% else %}<i class="bi bi-check-circle"></i> Плановая{% endif %}
+        </span>
+        <span class="badge bg-{{ 'success' if (req.status.value if req.status else '') == 'closed' else 'danger' if (req.status.value if req.status else '') == 'overdue' else 'warning' if (req.status.value if req.status else '') == 'assigned' else 'secondary' }}">
+            {{ req.status.value if req.status else '—' }}
+        </span>
+        {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('requests.edit_request', id=req.id) }}" class="btn btn-sm btn-outline-primary ms-auto">
+            <i class="bi bi-pencil"></i> Редактировать
+        </a>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-lg-6">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4"><i class="bi bi-person text-muted"></i> Клиент</dt>
+                    <dd class="col-sm-8">{{ req.client.full_name if req.client else req.full_name or '—' }}</dd>
+                    <dt class="col-sm-4"><i class="bi bi-geo-alt text-muted"></i> Адрес</dt>
+                    <dd class="col-sm-8">{{ req.client.address if req.client else req.address or '—' }}</dd>
+                    <dt class="col-sm-4"><i class="bi bi-telephone text-muted"></i> Телефон</dt>
+                    <dd class="col-sm-8">{{ req.client.phone if req.client else req.phone or '—' }}</dd>
+                    <dt class="col-sm-4"><i class="bi bi-people text-muted"></i> Исполнитель</dt>
+                    <dd class="col-sm-8">{% for w in req.workers %}{{ w.full_name }}{% if not loop.last %}, {% endif %}{% else %}—{% endfor %}</dd>
+                    <dt class="col-sm-4"><i class="bi bi-calendar text-muted"></i> Плановая дата</dt>
+                    <dd class="col-sm-8">{{ req.planned_date.strftime('%d.%m.%Y') if req.planned_date else '—' }}</dd>
+                    <dt class="col-sm-4"><i class="bi bi-currency-ruble text-muted"></i> Сумма</dt>
+                    <dd class="col-sm-8">{{ '{:,.0f}'.format(req.urgent_price or req.total_price or 0)|replace(',', ' ') }} ₽</dd>
+                </dl>
+            </div>
+            <div class="col-lg-6">
+                <h6 class="text-muted mb-2">Описание</h6>
+                <p class="mb-0">{{ req.description or '—' }}</p>
+                {% if req.comment %}
+                <h6 class="text-muted mt-3 mb-2">Комментарий</h6>
+                <p class="mb-0">{{ req.comment }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Timeline #}
+<div class="card mb-4">
+    <div class="card-header py-2">
+        <h6 class="mb-0"><i class="bi bi-clock-history"></i> Хронология</h6>
+    </div>
+    <div class="card-body">
+        <div class="request-timeline">
+            <div class="timeline-item">
+                <small class="text-muted">{{ req.created_at.strftime('%d.%m.%Y %H:%M') if req.created_at else '—' }}</small>
+                <p class="mb-0 small">Заявка создана</p>
+            </div>
+            {% if req.planned_date %}
+            <div class="timeline-item">
+                <small class="text-muted">{{ req.planned_date.strftime('%d.%m.%Y') }}</small>
+                <p class="mb-0 small">Запланирована на {{ req.planned_date.strftime('%d.%m.%Y') }}</p>
+            </div>
+            {% endif %}
+            {% if req.workers %}
+            <div class="timeline-item">
+                <small class="text-muted">—</small>
+                <p class="mb-0 small">Назначен: {% for w in req.workers %}{{ w.full_name }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+            </div>
+            {% endif %}
+            {% if req.status and req.status.value == 'closed' %}
+            <div class="timeline-item">
+                <small class="text-muted">{{ req.updated_at.strftime('%d.%m.%Y %H:%M') if req.updated_at else '—' }}</small>
+                <p class="mb-0 small">Заявка закрыта</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# Фото #}
+<div class="card mb-4">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-images"></i> Фото ({{ req.media|length }})</h6>
+        {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('photos.upload_photo') }}?next={{ url_for('requests.view_request', id=req.id)|urlencode }}&client_id={{ req.client_id or '' }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-cloud-upload"></i> Добавить
+        </a>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div class="request-photos-grid">
+            {% for photo in req.media %}
+            {% if photo.file_type in ['photo', 'image'] %}
+            <a href="{{ url_for('photos.view', id=photo.id) }}" target="_blank" class="d-block">
+                <img src="{{ url_for('photos.view', id=photo.id) }}" class="photo-thumb w-100" alt="Фото">
+            </a>
+            {% else %}
+            <a href="{{ url_for('photos.view', id=photo.id) }}" target="_blank" class="d-block bg-light rounded p-2 text-center" style="aspect-ratio: 1;">
+                <i class="bi bi-file-earmark fs-2 text-muted"></i>
+            </a>
+            {% endif %}
+            {% else %}
+            <p class="text-muted small mb-0">Нет прикреплённых фото</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{# Кнопки действий (desktop) #}
+<div class="d-none d-md-flex gap-2 mb-4">
+    <a href="{{ url_for('requests.list_requests') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> К списку</a>
+    {% if current_user.role == 'admin' %}
+    <a href="{{ url_for('requests.edit_request', id=req.id) }}" class="btn btn-primary"><i class="bi bi-pencil"></i> Редактировать</a>
+    <form action="{{ url_for('requests.delete_request', id=req.id) }}" method="post" class="d-inline">
+        <button type="submit" class="btn btn-outline-danger ms-2" onclick="return confirm('Удалить эту заявку? Фото и файлы останутся в разделе Фото.')">
+            <i class="bi bi-trash"></i> Удалить
+        </button>
+    </form>
+    {% endif %}
+    {% if current_user.role in ['engineer', 'master'] and req.status and req.status.value != 'closed' %}
+    {% set current_worker_ids = req.workers | map(attribute='id') | list %}
+    {% if not req.workers or current_user.id not in current_worker_ids %}
+    <form action="{{ url_for('requests.assign_request', id=req.id) }}" method="post" class="d-inline">
+        <button type="submit" class="btn btn-outline-primary"><i class="bi bi-person-plus"></i> Присвоить себе</button>
+    </form>
+    {% endif %}
+    {% if req.workers and current_user.id in current_worker_ids %}
+    <form action="{{ url_for('requests.close_request', id=req.id) }}" method="post" class="d-inline">
+        <button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Закрыть заявку</button>
+    </form>
+    {% endif %}
+    {% endif %}
+</div>
+
+{# Sticky bottom bar (mobile) #}
+<div class="request-actions-bottom d-md-none">
+    <a href="{{ url_for('requests.list_requests') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+    {% if current_user.role == 'admin' %}
+    <a href="{{ url_for('requests.edit_request', id=req.id) }}" class="btn btn-primary"><i class="bi bi-pencil"></i> Редактировать</a>
+    <form action="{{ url_for('requests.delete_request', id=req.id) }}" method="post" class="d-inline">
+        <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Удалить эту заявку? Фото и файлы останутся в разделе Фото.')">
+            <i class="bi bi-trash"></i>
+        </button>
+    </form>
+    {% endif %}
+    {% if current_user.role in ['engineer', 'master'] and req.status and req.status.value != 'closed' %}
+    {% set current_worker_ids = req.workers | map(attribute='id') | list %}
+    {% if req.workers and current_user.id in current_worker_ids %}
+    <form action="{{ url_for('requests.close_request', id=req.id) }}" method="post" class="d-inline">
+        <button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Закрыть</button>
+    </form>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/requests.css') }}">
+{% endblock %}

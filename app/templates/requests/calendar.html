@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}План-график{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <span class="nav-link active">
+            <i class="bi bi-calendar3"></i> План-график
+        </span>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+    <h1 class="mb-3">План-график</h1>
+
+    <form method="GET">
+        <label>Клиент:</label>
+        <select name="client_id">
+            <option value="all">Все</option>
+            {% for client in clients %}
+                <option value="{{ client.id }}">{{ client.full_name }}</option>
+            {% endfor %}
+        </select>
+
+        <label>Исполнитель:</label>
+        <select name="worker_id">
+            <option value="all">Все</option>
+            {% for worker in workers %}
+                <option value="{{ worker.id }}">{{ worker.full_name }}</option>
+            {% endfor %}
+        </select>
+
+        <label>Статус:</label>
+        <select name="status">
+            <option value="all">Все</option>
+            {% for stat in statuses %}
+                <option value="{{ stat }}">{{ stat }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit">Применить</button>
+    </form>
+
+    <div id="calendar"></div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'timeGridWeek',  // Неделя с таймгрид по умолчанию
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'  // Виды: месяц, неделя, день, список
+                },
+                buttonText: {
+                    today: 'Сегодня',
+                    month: 'Месяц',
+                    week: 'Неделя',
+                    day: 'День',
+                    list: 'Список'
+                },
+                locale: 'ru',  // Локализация на русский (месяцы, дни недели и т.д.)
+                editable: true,  // Перетаскивание событий
+                selectable: true,  // Выбор даты для создания
+                events: '{{ url_for('requests.api_events') }}',  // Данные из API
+                eventDrop: function(info) {
+                    // Обновление даты через API
+                    fetch('{{ url_for('requests.api_update_event') }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: info.event.id, start: info.event.start.toISOString() })
+                    });
+                },
+                eventClick: function(info) {
+                    // Клик на событие - открыть редактирование
+                    window.location.href = '{{ url_for('requests.edit_request', id=0) }}'.replace('0', info.event.id);
+                },
+                select: function(info) {
+                    // Клик на день/время - создать новую с датой
+                    window.location.href = '{{ url_for('requests.add_request') }}?planned_date=' + info.start.toISOString().split('T')[0];
+                },
+                eventTimeFormat: { hour: '2-digit', minute: '2-digit' },  // Формат времени
+                slotMinTime: '08:00:00',  // Начало дня
+                slotMaxTime: '20:00:00',  // Конец дня
+                height: 'auto',  // Авто-высота
+                allDaySlot: false  // Без all-day слота для фокуса на времени
+            });
+            calendar.render();
+        });
+    </script>
+{% endblock %}
+
+{% block extra_css %}
+    <!-- Стили для FullCalendar в стиле Hyper (светлый фон, цветные полосы событий с временем, акценты синие/зелёные/красные) -->
+    <style>
+        #calendar { max-width: 100%; margin: 0 auto; background: #fff; border: 1px solid #e0e0e0; border-radius: 0.5rem; padding: 1rem; }
+        .fc-toolbar { background: #f8f9fa; border-bottom: 1px solid #e0e0e0; padding: 10px; font-size: 1.1em; }
+        .fc-button { background: #007bff; color: #fff; border: none; border-radius: 5px; padding: 8px 15px; margin: 0 5px; }
+        .fc-button:hover { background: #0056b3; }
+        .fc-event { background: linear-gradient(to right, #007bff 0%, #007bff 20%, #f8f9fa 20%, #f8f9fa 100%); color: #333; border: none; border-radius: 5px; padding: 5px; font-size: 0.9em; display: flex; align-items: center; }
+        .fc-event.fc-event-past { opacity: 0.6; }
+        .fc-event .fc-event-time { background: #007bff; color: #fff; padding: 2px 5px; border-radius: 5px 0 0 5px; margin-right: 10px; }
+        .fc-event .fc-event-title { flex: 1; }
+        .fc-daygrid-day-frame { min-height: 120px; background: #fff; }
+        .fc-timegrid-slot { height: 2em; }
+        .fc-col-header-cell { background: #f8f9fa; border-bottom: 1px solid #e0e0e0; }
+        /* Цвета по статусу */
+        .fc-event[data-status="overdue"] { background: linear-gradient(to right, #dc3545 0%, #dc3545 20%, #f8f9fa 20%, #f8f9fa 100%); }
+        .fc-event[data-status="closed"] { background: linear-gradient(to right, #28a745 0%, #28a745 20%, #f8f9fa 20%, #f8f9fa 100%); }
+        .fc-event[data-status="assigned"] { background: linear-gradient(to right, #007bff 0%, #007bff 20%, #f8f9fa 20%, #f8f9fa 100%); }
+        .tab-btn { padding: 10px 20px; margin-right: 10px; border-radius: 5px; text-decoration: none; }
+        .tab-active { background: #007BFF; color: white; }
+        .tab-inactive { background: #CCC; color: black; }
+    </style>
+{% endblock %}

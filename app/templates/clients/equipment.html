@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Управление оборудованием клиента #{{ client.id }}{% endblock %}
+
+{% block tabs %}
+    <li class="nav-item"><a class="nav-link active" href="/equipment/">Общий список</a></li>
+    <li class="nav-item"><a class="nav-link" href="/equipment/templates">Шаблоны</a></li>
+    <li class="nav-item"><a class="nav-link" href="/equipment/add">Добавить оборудование</a></li>
+    <li class="nav-item"><a class="nav-link" href="/equipment/import">Импорт оборудования</a></li>
+{% endblock %}
+
+{% block content %}
+    <h4>Управление оборудованием клиента #{{ client.id }}</h4>
+    <form method="post">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Серийный номер:</label>
+                <input type="text" class="form-control" name="serial_number">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Тип:</label>
+                <input type="text" class="form-control" name="type">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Вид:</label>
+                <input type="text" class="form-control" name="kind">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Бренд:</label>
+                <input type="text" class="form-control" name="brand">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Модель:</label>
+                <input type="text" class="form-control" name="model">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Мощность:</label>
+                <input type="text" class="form-control" name="power">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Добавить оборудование</button>
+    </form>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+{% endblock %}
+
+{% block extra_css %}
+    <!-- Дополнительный CSS если нужно -->
+{% endblock %}
+
+{% block extra_js %}
+    <!-- Дополнительный JS если нужно -->
+{% endblock %}

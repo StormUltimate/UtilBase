@@ -1,0 +1,59 @@
+<!--# Path: app/templates/equipment/hierarchy.html-->
+
+{% extends "base.html" %}
+{% block title %}Иерархия оборудования{% if client %} клиента #{{ client.id }}{% endif %}{% endblock %}
+
+{% block tabs %}
+    {% if client %}
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('clients.client_detail', id=client.id) }}">Карточка клиента</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.client_passport', client_id=client.id) }}">Паспортизация</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.client_equipment_list', client_id=client.id) }}">Список оборудования</a></li>
+        <li class="nav-item"><a class="nav-link active" href="{{ url_for('equipment.client_hierarchy', client_id=client.id) }}">Иерархия</a></li>
+    {% else %}
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.list_equipment') }}">Общий список</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.templates_list') }}">Шаблоны</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.add_equipment') }}">Добавить оборудование</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.import_templates') }}">Импорт шаблонов</a></li>
+        <li class="nav-item"><a class="nav-link active" href="{{ url_for('equipment.hierarchy') }}">Иерархия</a></li>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <h1>Иерархия оборудования{% if client %} клиента: {{ client.full_name }}{% endif %}</h1>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Тип</th>
+                <th>Серийный номер</th>
+                <th>Бренд</th>
+                <th>Модель</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e, level in tree %}
+                <tr>
+                    <td style="padding-left: {{ level * 20 }}px;">{{ "—" * level }} {{ e.type }}</td>
+                    <td>{{ e.serial_number or 'Не указано' }}</td>
+                    <td>{{ e.brand or 'Не указано' }}</td>
+                    <td>{{ e.model or 'Не указано' }}</td>
+                    <td>
+                        <a href="{{ url_for('equipment.edit_equipment', id=e.id) }}" class="btn btn-sm btn-warning">Редактировать</a>
+                        <form method="POST" action="{{ url_for('equipment.delete_equipment', id=e.id) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Вы уверены?');">Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+{% block extra_css %}
+    <!-- Дополнительный CSS если нужно -->
+{% endblock %}
+
+{% block extra_js %}
+    <!-- Дополнительный JS если нужно -->
+{% endblock %}

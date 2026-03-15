@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Заявки сегодня{% endblock %}
+
+{% block tabs %}
+<a class="tab-btn {% if request.endpoint == 'requests.list_requests' %}tab-active{% else %}tab-inactive{% endif %}" href="{{ url_for('requests.list_requests') }}">Список заявок</a>
+<a class="tab-btn {% if request.endpoint == 'requests.add_request' %}tab-active{% else %}tab-inactive{% endif %}" href="{{ url_for('requests.add_request') }}">Создать заявку</a>
+<a class="tab-btn {% if request.endpoint == 'requests.today_requests' %}tab-active{% else %}tab-inactive{% endif %}" href="{{ url_for('requests.today_requests') }}">Заявки сегодня</a>
+<a class="tab-btn {% if request.endpoint == 'requests.calendar' %}tab-active{% else %}tab-inactive{% endif %}" href="{{ url_for('requests.calendar') }}">Календарь</a>
+{% endblock %}
+
+{% block content %}
+    <h1>Заявки</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div>
+        <a href="{{ url_for('requests.today_requests', filter_type='today') }}">Сегодня</a>
+        <a href="{{ url_for('requests.today_requests', filter_type='all') }}">Все</a>
+        <a href="{{ url_for('requests.today_requests', filter_type='overdue') }}">Просроченные {% if overdue_count > 0 %}({{ overdue_count }}){% endif %}</a>
+        <a href="{{ url_for('requests.today_requests', filter_type='specific_date') }}">По дате</a>
+    </div>
+
+    <form method="GET">
+        {% if filter_type == 'specific_date' %}
+        <div>
+            <label>Дата:</label>
+            <input type="date" name="specific_date" value="{{ request.args.get('specific_date', '') }}">
+        </div>
+        {% endif %}
+        
+        <div>
+            <label>Клиент:</label>
+            <select name="client_id">
+                <option value="all">Все</option>
+                {% for client in clients %}
+                    <option value="{{ client.id }}" {% if request.args.get('client_id') == client.id|string %}selected{% endif %}>{{ client.full_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div>
+            <label>Исполнитель:</label>
+            <select name="worker_id">
+                <option value="all">Все</option>
+                {% for worker in workers %}
+                    <option value="{{ worker.id }}" {% if request.args.get('worker_id') == worker.id|string %}selected{% endif %}>{{ worker.full_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div>
+            <label>Тип заявки:</label>
+            <select name="service_type">
+                <option value="all" {% if request.args.get('service_type') == 'all' %}selected{% endif %}>Все</option>
+                <option value="standard" {% if request.args.get('service_type') == 'standard' %}selected{% endif %}>Стандартная</option>
+                <option value="warranty" {% if request.args.get('service_type') == 'warranty' %}selected{% endif %}>Гарантийная</option>
+                <option value="emergency" {% if request.args.get('service_type') == 'emergency' %}selected{% endif %}>Аварийная</option>
+            </select>
+        </div>
+
+        <div>
+            <label>Статус:</label>
+            <select name="status">
+                <option value="all" {% if request.args.get('status') == 'all' %}selected{% endif %}>Все</option>
+                <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>Ожидает</option>
+                <option value="assigned" {% if request.args.get('status') == 'assigned' %}selected{% endif %}>Назначена</option>
+                <option value="closed" {% if request.args.get('status') == 'closed' %}selected{% endif %}>Закрыта</option>
+                <option value="overdue" {% if request.args.get('status') == 'overdue' %}selected{% endif %}>Просрочена</option>
+            </select>
+        </div>
+
+        <div>
+            <label>Сортировать по:</label>
+            <select name="sort_by">
+                <option value="planned_date" {% if request.args.get('sort_by') == 'planned_date' %}selected{% endif %}>Плановая дата</option>
+                <option value="full_name" {% if request.args.get('sort_by') == 'full_name' %}selected{% endif %}>Клиент</option>
+                <option value="request_number" {% if request.args.get('sort_by') == 'request_number' %}selected{% endif %}>Номер заявки</option>
+                <option value="executor_name" {% if request.args.get('sort_by') == 'executor_name' %}selected{% endif %}>Исполнитель</option>
+            </select>
+            <select name="sort_order">
+                <option value="asc" {% if request.args.get('sort_order') == 'asc' %}selected{% endif %}>По возрастанию</option>
+                <option value="desc" {% if request.args.get('sort_order') == 'desc' %}selected{% endif %}>По убыванию</option>
+            </select>
+        </div>
+
+        <button type="submit">Применить</button>
+    </form>
+
+    <form method="POST" action="{{ url_for('requests.assign_worker') }}">
+        <table>
+            <thead>
+                <tr>
+                    <th>Выбрать</th>
+                    <th>ID</th>
+                    <th>Номер</th>
+                    <th>Клиент</th>
+                    <th>Адрес</th>
+                    <th>Телефон</th>
+                    <th>Описание</th>
+                    <th>Тип</th>
+                    <th>Причина гарантии</th>
+                    <th>Статус</th>
+                    <th>Дата обновления</th>
+                    <th>Оценочное время (ч)</th>
+                    <th>Плановая дата</th>
+                    <th>Исполнитель</th>
+                    <th>Оборудование</th>
+                    <th>Срочная цена</th>
+                    <th>Сумма по регламенту</th>
+                    <th>Стоимость материалов</th>
+                    <th>Общая сумма</th>
+                    <th>Договор</th>
+                    <th>Комментарий</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for req in requests %}
+                <tr>
+                    <td><input type="checkbox" name="request_ids" value="{{ req.id }}"></td>
+                    <td>{{ req.id }}</td>
+                    <td>{{ req.request_number }}</td>
+                    <td>{{ req.full_name }}</td>
+                    <td>{{ req.address or '' }}</td>
+                    <td>{{ req.phone or '' }}</td>
+                    <td>{{ req.description or '' }}</td>
+                    <td>{{ req.service_type }}</td>
+                    <td>{{ req.warranty_reason or '' }}</td>
+                    <td>{{ req.status }}</td>
+                    <td>{{ req.updated_at.strftime('%Y-%m-%d') if req.updated_at else '' }}</td>
+                    <td>{{ req.estimated_time or '' }}</td>
+                    <td>{{ req.planned_date.strftime('%Y-%m-%d') if req.planned_date else '' }}</td>
+                    <td>{% for w in req.workers %}{{ w.full_name }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+                    <td>{{ req.equipment.serial_number if req.equipment else '' }} {% if req.equipment and req.equipment.model %}({{ req.equipment.model }}){% endif %}</td>
+                    <td>{{ req.urgent_price or 0 }}</td>
+                    <td>{{ req.contract_regulated_price or 0 }}</td>
+                    <td>{{ req.materials_cost or 0 }}</td>
+                    <td>{{ req.total_price or 0 }}</td>
+                    <td>{{ req.contract.contract_number if req.contract else '' }}</td>
+                    <td>{{ req.comment or '' }}</td>
+                    <td>
+                        <a href="{{ url_for('requests.view_request', id=req.id) }}">Просмотреть</a>
+                        <a href="{{ url_for('requests.edit_request', id=req.id) }}">Редактировать</a>
+                        <a href="{{ url_for('requests.create_work_order', id=req.id) }}">Создать наряд</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div>
+            <label>Назначить исполнителя:</label>
+            <select name="worker_id">
+                {% for worker in workers %}
+                    <option value="{{ worker.id }}">{{ worker.full_name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Назначить</button>
+        </div>
+    </form>
+{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .tab-btn { padding: 10px 20px; margin-right: 10px; border-radius: 5px; text-decoration: none; }
+        .tab-active { background: #007BFF; color: white; }
+        .tab-inactive { background: #CCC; color: black; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background: #f5f5f5; font-weight: bold; }
+    </style>
+{% endblock %}
+
+{% block extra_js %}
+
+{% endblock %}

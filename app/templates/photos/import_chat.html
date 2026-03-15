@@ -1,0 +1,33 @@
+# Path: app/templates/photos/import_chat.html
+{% extends "base.html" %}
+{% block title %}Импорт чата Telegram{% endblock %}
+
+{% block content %}
+
+    <h1>Импорт чата</h1>
+
+    <form method="POST" enctype="multipart/form-data">
+        
+            JSON-файл экспорта
+            <input type="file" name="json_file" accept=".json" required>
+        
+
+        
+            Путь к папке с медиа
+            <input type="text" name="media_path" required>
+        
+
+        <input type="submit" value="Импортировать">
+    </form>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul>
+                {% for category, message in messages %}
+                    <li class="{% if category == 'error' %}text-danger{% else %}text-success{% endif %}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+{% endblock %}

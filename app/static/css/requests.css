@@ -1,0 +1,74 @@
+/* UtilBase — Заявки (maintenance ticketing) */
+.request-card {
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.request-card .card-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    font-size: 0.9rem;
+}
+.request-card .badge {
+    font-size: 0.7rem;
+}
+/* Тип заявки: danger=аварийная, warning=ремонтная, success=плановая */
+.req-type-emergency { --bs-badge-bg: #dc3545; }
+.req-type-repair { --bs-badge-bg: #fd7e14; }
+.req-type-planned { --bs-badge-bg: #198754; }
+/* Timeline для view */
+.request-timeline {
+    position: relative;
+    padding-left: 1.5rem;
+}
+.request-timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+    border-radius: 1px;
+}
+.request-timeline .timeline-item {
+    position: relative;
+    padding-bottom: 1rem;
+}
+.request-timeline .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -1.4rem;
+    top: 0.35rem;
+    width: 10px;
+    height: 10px;
+    background: #0d6efd;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #dee2e6;
+}
+/* Sticky bottom bar */
+.request-actions-bottom {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.1);
+    padding: 12px 24px;
+    z-index: 1030;
+    display: none;
+}
+@media (max-width: 768px) {
+    .request-actions-bottom { display: flex; justify-content: center; gap: 8px; }
+    .content-wrapper { padding-bottom: 80px; }
+}
+/* Photo grid */
+.request-photos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+}
+.request-photos-grid .photo-thumb {
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 8px;
+}

@@ -1,0 +1,43 @@
+<!-- Path: V:\UtilBase\app\templates\workers\workers_create.html -->
+{% extends "base.html" %}
+{% block title %}Создать исполнителя{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('workers.list_workers') }}">
+            <i class="bi bi-people-fill"></i> Исполнители
+        </a>
+    </li>
+    <li class="nav-item">
+        <span class="nav-link active">Создать исполнителя</span>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-3">Создать исполнителя</h2>
+<form method="post" class="row g-3">
+    <div class="col-12 col-md-6">
+        <label class="form-label">ФИО</label>
+        <input type="text" name="full_name" class="form-control" required>
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label">Телефон</label>
+        <input type="text" name="phone" class="form-control">
+    </div>
+    <div class="col-12 col-md-4">
+        <label class="form-label">Роль</label>
+        <select name="role" class="form-select" required>
+            <option value="master">Мастер</option>
+            <option value="engineer">Инженер</option>
+        </select>
+    </div>
+    <div class="col-12">
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-plus-lg"></i> Создать
+        </button>
+        <a href="{{ url_for('workers.list_workers') }}" class="btn btn-outline-secondary ms-2">Отмена</a>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,633 @@
+<!-- Path: templates/clients/detail.html -->
+{% extends "base.html" %}
+{% block title %}{{ client.full_name or 'Клиент' }} #{{ client.id }}{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('clients.clients') }}">Список клиентов</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('clients.add_client') }}">Добавить клиента</a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+{# Хлебные крошки #}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('clients.clients') }}"><i class="bi bi-people"></i> Клиенты</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ client.full_name or 'Клиент #' ~ client.id }}</li>
+    </ol>
+</nav>
+
+{# Вычисляем статус договора #}
+{% set ns = namespace(found=false) %}
+{% for c in contracts %}
+    {% if c.end_date and c.end_date.date() >= now_date %}
+        {% set ns.found = true %}
+    {% endif %}
+{% endfor %}
+{% set contract_status = 'active' if ns.found else ('expired' if contracts else 'none') %}
+
+{# Основная карточка клиента #}
+<div class="card client-detail-card">
+    <div class="card-header bg-white py-3">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <h4 class="mb-0 me-2"><i class="bi bi-person-fill text-primary"></i> {{ client.full_name or 'Без имени' }}</h4>
+            {% if client.counterparty %}
+            <span class="badge bg-secondary">{{ client.counterparty }}</span>
+            {% endif %}
+            {% if contract_status == 'active' %}
+            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Договор активен</span>
+            {% elif contract_status == 'expired' %}
+            <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> Договор просрочен</span>
+            {% else %}
+            <span class="badge bg-warning text-dark"><i class="bi bi-dash-circle"></i> Нет договора</span>
+            {% endif %}
+            <a href="{{ url_for('clients.edit_client', client_id=client.id) }}" class="btn btn-sm btn-outline-primary ms-auto">
+                <i class="bi bi-pencil"></i> Редактировать
+            </a>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#mapModal"
+                    data-id="{{ client.id }}" data-lat="{{ client.latitude }}" data-long="{{ client.longitude }}"
+                    data-name="{{ client.full_name }}" data-address="{{ client.address }}">
+                <i class="bi bi-geo-alt"></i> На карте
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        {# Горизонтальные табы #}
+        <ul class="nav nav-tabs nav-tabs-detail mb-3" id="clientTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-general-btn" data-bs-toggle="tab" data-bs-target="#tab-general" type="button" role="tab">
+                    <i class="bi bi-person-lines-fill"></i> Общая информация
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-contracts-btn" data-bs-toggle="tab" data-bs-target="#tab-contracts" type="button" role="tab">
+                    <i class="bi bi-file-earmark-text"></i> Договора
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-equipment-btn" data-bs-toggle="tab" data-bs-target="#tab-equipment" type="button" role="tab">
+                    <i class="bi bi-tools"></i> Оборудование
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-requests-btn" data-bs-toggle="tab" data-bs-target="#tab-requests" type="button" role="tab">
+                    <i class="bi bi-list-check"></i> Заявки
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-photos-btn" data-bs-toggle="tab" data-bs-target="#tab-photos" type="button" role="tab">
+                    <i class="bi bi-images"></i> Фото
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="clientTabsContent">
+            {# ========== Вкладка: Общая информация ========== #}
+            <div class="tab-pane fade show active" id="tab-general" role="tabpanel">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4"><i class="bi bi-telephone text-muted"></i> Телефон</dt>
+                            <dd class="col-sm-8">{{ client.phone or '—' }}</dd>
+                            <dt class="col-sm-4"><i class="bi bi-envelope text-muted"></i> Email</dt>
+                            <dd class="col-sm-8">{{ client.email or '—' }}</dd>
+                            <dt class="col-sm-4"><i class="bi bi-geo-alt text-muted"></i> Адрес</dt>
+                            <dd class="col-sm-8">{{ client.address or '—' }}</dd>
+                            <dt class="col-sm-4"><i class="bi bi-person-badge text-muted"></i> Представитель</dt>
+                            <dd class="col-sm-8">{{ client.representative_name or '—' }}</dd>
+                            <dt class="col-sm-4"><i class="bi bi-telephone-outbound text-muted"></i> Тел. представителя</dt>
+                            <dd class="col-sm-8">{{ client.representative_phone or '—' }}</dd>
+                            <dt class="col-sm-4"><i class="bi bi-calendar text-muted"></i> Дата создания</dt>
+                            <dd class="col-sm-8">{{ client.created_at.strftime('%Y-%m-%d %H:%M') if client.created_at else '—' }}</dd>
+                        </dl>
+                    </div>
+                    <div class="col-lg-6">
+                        {# Срок договора (если есть активный) #}
+                        {% for c in contracts %}
+                            {% if c.end_date and c.end_date.date() >= now_date %}
+                            <div class="alert alert-success py-2 mb-2">
+                                <i class="bi bi-file-earmark-check"></i> Договор до {{ c.end_date.strftime('%d.%m.%Y') }}
+                                <span class="badge bg-success ms-1">Активен</span>
+                            </div>
+                            {% elif c.end_date %}
+                            <div class="alert alert-danger py-2 mb-2">
+                                <i class="bi bi-file-earmark-x"></i> Договор истёк {{ c.end_date.strftime('%d.%m.%Y') }}
+                                <span class="badge bg-danger ms-1">Просрочен</span>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                        {# Последние 3 заявки #}
+                        <h6 class="mt-3"><i class="bi bi-list-check"></i> Последние заявки</h6>
+                        {% for req in requests[:3] %}
+                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                            <span>
+                                {% if req.type == 'аварийная' or req.type == 'emergency' %}
+                                <span class="badge bg-danger me-1">Аварийная</span>
+                                {% elif req.type == 'ремонтная' %}
+                                <span class="badge bg-warning text-dark me-1">Ремонтная</span>
+                                {% else %}
+                                <span class="badge bg-info me-1">{{ req.type or 'Заявка' }}</span>
+                                {% endif %}
+                                {{ req.request_number or req.id }} — {{ (req.description or '')[:40] }}{% if (req.description or '')|length > 40 %}...{% endif %}
+                            </span>
+                            <a href="{{ url_for('requests.view_request', id=req.id) }}" class="btn btn-sm btn-outline-primary">→</a>
+                        </div>
+                        {% else %}
+                        <p class="text-muted small">Нет заявок</p>
+                        {% endfor %}
+                        <a href="{{ url_for('requests.list_requests') }}?client_id={{ client.id }}" class="btn btn-outline-primary btn-sm mt-2">
+                            <i class="bi bi-arrow-right-circle"></i> Перейти к полному списку заявок
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {# ========== Вкладка: Договора ========== #}
+            <div class="tab-pane fade" id="tab-contracts" role="tabpanel">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addContractModal">
+                        <i class="bi bi-plus-lg"></i> Добавить договор
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th><i class="bi bi-hash"></i> № договора</th>
+                                <th><i class="bi bi-tag"></i> Тип</th>
+                                <th><i class="bi bi-calendar"></i> Дата начала</th>
+                                <th><i class="bi bi-calendar"></i> Дата окончания</th>
+                                <th><i class="bi bi-currency-ruble"></i> Сумма</th>
+                                <th><i class="bi bi-circle-fill"></i> Статус</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for contract in contracts %}
+                            <tr>
+                                <td>{{ contract.id }}</td>
+                                <td>{{ contract.contract_type or '—' }}</td>
+                                <td>{{ contract.start_date.strftime('%d.%m.%Y') if contract.start_date else '—' }}</td>
+                                <td>{{ contract.end_date.strftime('%d.%m.%Y') if contract.end_date else '—' }}</td>
+                                <td>{{ '{:,.0f}'.format(contract.total_price or 0)|replace(',', ' ') }} ₽</td>
+                                <td>
+                                    {% if contract.end_date and contract.end_date.date() >= now_date %}
+                                    <span class="badge bg-success">Активен</span>
+                                    {% elif contract.end_date and contract.end_date.date() < now_date %}
+                                    <span class="badge bg-danger">Просрочен</span>
+                                    {% elif contract.end_date %}
+                                    <span class="badge bg-secondary">Завершён</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('clients.print_contract', contract_id=contract.id) }}" class="btn btn-sm btn-success" target="_blank" title="Печать PDF">
+                                        <i class="bi bi-printer"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="7" class="text-center text-muted">Нет договоров</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {# ========== Вкладка: Оборудование ========== #}
+            <div class="tab-pane fade" id="tab-equipment" role="tabpanel">
+                <div class="mb-3">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEquipmentModal">
+                        <i class="bi bi-plus-lg"></i> Добавить оборудование
+                    </button>
+                    <a href="{{ url_for('equipment.add_client_equipment', client_id=client.id) }}" class="btn btn-outline-secondary ms-2">
+                        <i class="bi bi-pencil"></i> Полная форма
+                    </a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th><i class="bi bi-tag"></i> Марка</th>
+                                <th><i class="bi bi-lightning"></i> Мощность</th>
+                                <th><i class="bi bi-calendar"></i> Год</th>
+                                <th><i class="bi bi-upc-scan"></i> Серийный №</th>
+                                <th><i class="bi bi-calendar-plus"></i> Дата установки</th>
+                                <th><i class="bi bi-file-earmark-text"></i> Договор</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for eq in equipment %}
+                            <tr>
+                                <td>{{ eq.brand or '' }} {{ eq.model or eq.type or '—' }}</td>
+                                <td>{{ eq.power or '—' }}</td>
+                                <td>{{ eq.production_year or '—' }}</td>
+                                <td>{{ eq.serial_number or '—' }}</td>
+                                <td>{{ eq.created_at.strftime('%d.%m.%Y') if eq.created_at else '—' }}</td>
+                                <td>
+                                    {% if eq.contract_id %}
+                                    <a href="{{ url_for('clients.client_detail', client_id=client.id) }}#tab-contracts">{{ eq.contract.contract_type or 'Договор #' ~ eq.contract_id }}</a>
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="6" class="text-center text-muted">Нет оборудования</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {# ========== Вкладка: Заявки ========== #}
+            <div class="tab-pane fade" id="tab-requests" role="tabpanel">
+                <form method="get" action="{{ url_for('clients.client_detail', client_id=client.id) }}" class="row g-2 mb-3 align-items-end">
+                    <input type="hidden" name="tab" value="requests">
+                    <div class="col-auto">
+                        <label class="form-label small mb-0">Тип</label>
+                        <select name="type" class="form-select form-select-sm">
+                            <option value="">Все</option>
+                            <option value="аварийные" {% if req_type == 'аварийные' %}selected{% endif %}>Аварийные</option>
+                            <option value="ремонтные" {% if req_type == 'ремонтные' %}selected{% endif %}>Ремонтные</option>
+                            <option value="плановые" {% if req_type == 'плановые' %}selected{% endif %}>Плановые</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label small mb-0">С</label>
+                        <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from or '' }}">
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label small mb-0">По</label>
+                        <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to or '' }}">
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label small mb-0">Поиск</label>
+                        <input type="text" name="search" class="form-control form-control-sm" placeholder="По описанию" value="{{ search_desc or '' }}">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search"></i> Применить</button>
+                    </div>
+                </form>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th><i class="bi bi-hash"></i> №</th>
+                                <th><i class="bi bi-tag"></i> Тип</th>
+                                <th><i class="bi bi-text-left"></i> Описание</th>
+                                <th><i class="bi bi-currency-ruble"></i> Сумма</th>
+                                <th><i class="bi bi-circle"></i> Статус</th>
+                                <th><i class="bi bi-calendar"></i> Дата</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for req in requests %}
+                            <tr>
+                                <td>{{ req.request_number or req.id }}</td>
+                                <td>
+                                    {% if req.type == 'аварийная' or req.type == 'emergency' %}
+                                    <span class="badge bg-danger">{{ req.type }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ req.type or '—' }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ (req.description or '—')[:50] }}{% if (req.description or '')|length > 50 %}...{% endif %}</td>
+                                <td>{{ req.urgent_price or req.total_price or 0 }}</td>
+                                <td><span class="badge bg-{{ 'success' if (req.status.name if req.status else '') == 'closed' else 'warning' if (req.status.name if req.status else '') == 'overdue' else 'secondary' }}">{{ req.status.value if req.status else '—' }}</span></td>
+                                <td>{{ req.created_at.strftime('%d.%m.%Y') if req.created_at else '—' }}</td>
+                                <td>
+                                    <a href="{{ url_for('requests.view_request', id=req.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="7" class="text-center text-muted">Нет заявок</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {# ========== Вкладка: Фото ========== #}
+            <div class="tab-pane fade" id="tab-photos" role="tabpanel">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadPhotoModal">
+                        <i class="bi bi-cloud-upload"></i> Загрузить фото
+                    </button>
+                </div>
+                <div class="client-photo-gallery">
+                    {% for photo in photos %}
+                    <div>
+                        <div class="card h-100">
+                            {% if photo.file_type == 'photo' or photo.file_type == 'image' %}
+                            <a href="{{ url_for('photos.view', id=photo.id) }}" target="_blank">
+                                <img src="{{ url_for('photos.view', id=photo.id) }}" class="card-img-top" alt="Фото" style="height: 150px; object-fit: cover;">
+                            </a>
+                            {% else %}
+                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 150px;">
+                                <i class="bi bi-file-earmark fs-1 text-muted"></i>
+                            </div>
+                            {% endif %}
+                            <div class="card-body py-2">
+                                <small class="text-muted">{{ photo.upload_date.strftime('%d.%m.%Y') if photo.upload_date else '—' }}</small>
+                                {% if photo.description %}<p class="card-text small mb-0">{{ photo.description[:30] }}{% if photo.description|length > 30 %}...{% endif %}</p>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4 w-100">Нет фото</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Модальное окно: Добавить договор #}
+<div class="modal fade" id="addContractModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-plus"></i> Добавить договор</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <form action="{{ url_for('clients.add_contract', client_id=client.id) }}" method="POST" class="needs-validation" novalidate>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Тип договора <span class="text-danger">*</span></label>
+                        <select name="contract_type" class="form-select" required>
+                            <option value="">Выберите тип</option>
+                            <option value="комплексный">Комплексный</option>
+                            <option value="отопление">Отопление</option>
+                            <option value="электрика">Электрика</option>
+                            <option value="вода">Вода</option>
+                            <option value="канализация">Канализация</option>
+                            <option value="другое">Другое</option>
+                        </select>
+                        <div class="invalid-feedback">Выберите тип договора</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Сумма (руб) <span class="text-danger">*</span></label>
+                        <input type="number" name="total_price" class="form-control" step="0.01" min="0" placeholder="0" required>
+                        <div class="invalid-feedback">Укажите сумму</div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label">Дата начала <span class="text-danger">*</span></label>
+                            <input type="date" name="start_date" class="form-control" required>
+                            <div class="invalid-feedback">Укажите дату начала</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Дата окончания <span class="text-danger">*</span></label>
+                            <input type="date" name="end_date" class="form-control" required>
+                            <div class="invalid-feedback">Укажите дату окончания</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# Модальное окно: Загрузить фото #}
+<div class="modal fade" id="uploadPhotoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-cloud-upload"></i> Загрузить фото</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <form action="{{ url_for('photos.upload_photo') }}?next={{ url_for('clients.client_detail', client_id=client.id) }}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" name="client_id" value="{{ client.id }}">
+                    <input type="hidden" name="file_type" value="photo">
+                    <div class="mb-3">
+                        <label class="form-label">Выберите файлы</label>
+                        <input type="file" name="file" class="form-control" accept="image/*" multiple required>
+                        <small class="text-muted">Можно выбрать несколько файлов</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Описание (необязательно)</label>
+                        <input type="text" name="description" class="form-control" placeholder="Описание фото">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> Загрузить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# Модальное окно: Добавить оборудование #}
+<div class="modal fade" id="addEquipmentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-tools"></i> Добавить оборудование</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <form action="{{ url_for('clients.add_equipment_modal', client_id=client.id) }}" method="POST" class="needs-validation" novalidate>
+                <div class="modal-body">
+                    {% if equipment_templates %}
+                    <div class="mb-3">
+                        <label class="form-label">Шаблон (опционально)</label>
+                        <select name="template_id" id="equipmentTemplateSelect" class="form-select">
+                            <option value="">Без шаблона</option>
+                            {% for t in equipment_templates %}
+                            <option value="{{ t.id }}" data-type="{{ t.type or '' }}" data-brand="{{ t.brand or '' }}" data-model="{{ t.model or '' }}" data-power="{{ t.power or '' }}" data-year="{{ t.production_year or '' }}">
+                                {{ t.type or '' }} {{ t.brand or '' }} {{ t.model or '' }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Серийный номер</label>
+                            <input type="text" name="serial_number" id="eqSerialNumber" class="form-control" placeholder="Авто">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Тип</label>
+                            <input type="text" name="type" id="eqType" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Марка</label>
+                            <input type="text" name="brand" id="eqBrand" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Модель</label>
+                            <input type="text" name="model" id="eqModel" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Мощность</label>
+                            <input type="text" name="power" id="eqPower" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Год выпуска</label>
+                            <input type="number" name="production_year" id="eqYear" class="form-control" min="1900" max="2100">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Договор</label>
+                            <select name="contract_id" class="form-select">
+                                <option value="">—</option>
+                                {% for c in contracts %}
+                                <option value="{{ c.id }}">{{ c.contract_type or 'Договор' }} #{{ c.id }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+document.querySelectorAll('.toast').forEach(function(el) {
+    try { var t = new bootstrap.Toast(el, { delay: 5000 }); t.show(); } catch(e) {}
+});
+(function() {
+    var sel = document.getElementById('equipmentTemplateSelect');
+    if (sel) sel.addEventListener('change', function() {
+        var opt = this.options[this.selectedIndex];
+        if (opt.value && opt.dataset) {
+            var id = function(n){ return document.getElementById(n); };
+            if (id('eqType')) id('eqType').value = opt.dataset.type || '';
+            if (id('eqBrand')) id('eqBrand').value = opt.dataset.brand || '';
+            if (id('eqModel')) id('eqModel').value = opt.dataset.model || '';
+            if (id('eqPower')) id('eqPower').value = opt.dataset.power || '';
+            if (id('eqYear')) id('eqYear').value = opt.dataset.year || '';
+        }
+    });
+})();
+</script>
+
+{# Модальное окно: Карта (существующий) #}
+<div class="modal fade" id="mapModal" tabindex="-1" aria-labelledby="mapModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mapModalLabel">Карта клиента</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="map" style="width: 100%; height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        {% for category, message in messages %}
+        <div class="toast align-items-center text-bg-{{ 'success' if category == 'success' else 'danger' if category == 'error' else category }} border-0 show" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">{{ message }}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+{% endwith %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+    var forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('type') || params.get('date_from') || params.get('date_to') || params.get('search')) {
+        var tab = document.querySelector('#tab-requests-btn');
+        if (tab) { var t = new bootstrap.Tab(tab); t.show(); }
+    }
+    var hash = window.location.hash;
+    if (hash === '#tab-contracts') {
+        var ct = document.querySelector('#tab-contracts-btn');
+        if (ct) { var t = new bootstrap.Tab(ct); t.show(); }
+    }
+})();
+</script>
+<script src="https://api-maps.yandex.ru/2.1/?apikey=3ef709e6-31eb-4c3c-a488-4f08ddbd5caf&lang=ru_RU" type="text/javascript"></script>
+<script type="text/javascript">
+    ymaps.ready(function () {
+        var mapModal = document.getElementById('mapModal');
+        var myMap;
+        mapModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var clientId = button.getAttribute('data-id');
+            var lat = parseFloat(button.getAttribute('data-lat')) || null;
+            var long = parseFloat(button.getAttribute('data-long')) || null;
+            var name = button.getAttribute('data-name');
+            var address = button.getAttribute('data-address');
+            if (!address || !address.trim()) {
+                alert('Адрес клиента не указан.');
+                var modalInstance = bootstrap.Modal.getInstance(mapModal);
+                modalInstance.hide();
+                return;
+            }
+            function initMap(lat, long) {
+                myMap = new ymaps.Map('map', { center: [lat, long], zoom: 15 });
+                var myPlacemark = new ymaps.Placemark([lat, long], {
+                    hintContent: name || 'Клиент',
+                    balloonContent: address || 'Адрес не указан'
+                });
+                myMap.geoObjects.add(myPlacemark);
+            }
+            if (!lat || !long) {
+                ymaps.geocode(address, { results: 1 }).then(function (res) {
+                    var firstGeoObject = res.geoObjects.get(0);
+                    if (firstGeoObject) {
+                        var coords = firstGeoObject.geometry.getCoordinates();
+                        lat = coords[0]; long = coords[1];
+                        initMap(lat, long);
+                        fetch('/clients/update_coords/' + clientId, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ lat: lat, long: long })
+                        });
+                    } else {
+                        alert('Не удалось найти координаты по адресу.');
+                        bootstrap.Modal.getInstance(mapModal).hide();
+                    }
+                }).catch(function (err) {
+                    console.error('Ошибка геокодирования:', err);
+                    bootstrap.Modal.getInstance(mapModal).hide();
+                });
+            } else {
+                initMap(lat, long);
+            }
+        });
+        mapModal.addEventListener('hidden.bs.modal', function () {
+            if (myMap) { myMap.destroy(); myMap = null; }
+        });
+    });
+</script>
+{% endblock %}

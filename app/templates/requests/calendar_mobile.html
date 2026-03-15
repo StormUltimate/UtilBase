@@ -1,0 +1,29 @@
+<!-- Path: V:\UtilBase\app\templates\requests\calendar_mobile.html -->
+{% extends "base.html" %}
+{% block title %}Календарь (мобильная){% endblock %}
+
+{% block content %}
+    <h1>Мой календарь</h1>
+    <div id="calendar"></div>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'timeGridDay',  // Mobile default: день
+                events: '/requests/api/events',
+                editable: false,
+                headerToolbar: {
+                    left: 'prev,next',
+                    center: 'title',
+                    right: 'today'
+                }
+            });
+            calendar.render();
+        });
+    </script>
+    <style>
+        #calendar { width: 100%; margin: 20px auto; }
+        @media (max-width: 768px) { #calendar { font-size: 14px; } }
+    </style>
+{% endblock %}

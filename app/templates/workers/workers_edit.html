@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Редактировать исполнителя #{{ worker.id }}{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('workers.list_workers') }}">
+            <i class="bi bi-people-fill"></i> Исполнители
+        </a>
+    </li>
+    <li class="nav-item">
+        <span class="nav-link active">Редактировать исполнителя</span>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<h2 class="mb-3">Редактировать исполнителя #{{ worker.id }}</h2>
+
+<form method="post" class="row g-3">
+    <div class="col-12 col-md-6">
+        <label class="form-label">ФИО</label>
+        <input type="text" name="full_name" class="form-control" value="{{ worker.full_name }}" required>
+    </div>
+    <div class="col-12 col-md-6">
+        <label class="form-label">Телефон</label>
+        <input type="text" name="phone" class="form-control" value="{{ worker.phone or '' }}">
+    </div>
+    <div class="col-12 col-md-4">
+        <label class="form-label">Роль</label>
+        <select name="role" class="form-select" required>
+            <option value="master" {% if worker.role == 'master' %}selected{% endif %}>Мастер</option>
+            <option value="engineer" {% if worker.role == 'engineer' %}selected{% endif %}>Инженер</option>
+        </select>
+    </div>
+    <div class="col-12">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> Сохранить
+        </button>
+        <a href="{{ url_for('workers.list_workers') }}" class="btn btn-outline-secondary ms-2">Отмена</a>
+    </div>
+</form>
+
+{% endblock %}
+

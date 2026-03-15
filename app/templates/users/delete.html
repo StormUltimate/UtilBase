@@ -1,0 +1,29 @@
+<!-- Path: app/templates/users/delete.html -->
+{% extends "base.html" %}
+{% block title %}Удалить пользователя{% endblock %}
+
+{% block tabs %}
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('users.list_users') }}">Список пользователей</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('users.add_user') }}">Добавить пользователя</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('users.delete_user') }}">Удалить пользователя</a></li>
+{% endblock %}
+
+{% block content %}
+    <h4>Удалить пользователя</h4>
+    <form method="post">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.user_id.label }}
+            {{ form.user_id(class="form-control") }}
+        </div>
+        {{ form.submit(class="btn btn-danger") }}
+    </form>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+{% endblock %}

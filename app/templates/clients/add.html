@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Добавить клиента{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('clients.clients') }}">Список клиентов</a></li>
+    <li class="nav-item"><span class="nav-link active">Добавить клиента</span></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+    <h4>Добавить клиента</h4>
+    <form method="post">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.full_name.label(class="form-label") }}
+            {{ form.full_name(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.phone.label(class="form-label") }}
+            {{ form.phone(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.address.label(class="form-label") }}
+            {{ form.address(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.representative_name.label(class="form-label") }}
+            {{ form.representative_name(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.representative_phone.label(class="form-label") }}
+            {{ form.representative_phone(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control") }}
+        </div>
+        {{ form.submit(class="btn btn-primary") }}
+    </form>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+{% endblock %}

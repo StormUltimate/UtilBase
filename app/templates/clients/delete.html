@@ -1,0 +1,35 @@
+<!-- Path: templates/clients/delete.html -->
+{% extends "base.html" %}
+{% block title %}Удалить клиента{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('clients.clients') }}">Список клиентов</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{{ url_for('clients.delete_client') }}">Удалить клиента</a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+    <h2>Удалить клиента</h2>
+
+    <form method="post" class="card card-body">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.client_id.label(class="form-label") }}
+            {{ form.client_id(class="form-control") }}
+        </div>
+        {{ form.submit(class="btn btn-danger") }}
+    </form>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} mt-3">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+{% endblock %}

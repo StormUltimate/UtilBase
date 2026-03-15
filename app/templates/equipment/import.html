@@ -1,0 +1,35 @@
+<!--# Path: app/templates/equipment/import.html
+# New file: Форма импорта шаблонов (xlsx, столбцы как в модели).-->
+{% extends "base.html" %}
+{% block title %}Импорт шаблонов оборудования{% endblock %}
+
+{% block tabs %}
+     <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.list_equipment') }}">Общий список</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.templates_list') }}">Шаблоны</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.add_equipment') }}">Добавить оборудование</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.hierarchy') }}">Иерархия</a></li>
+{% endblock %}
+
+{% block content %}
+    <h2>Импорт шаблонов</h2>
+
+    <form method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.file.label }} {{ form.file(class="form-control") }}
+        </div>
+
+        {{ form.submit(class="btn btn-primary") }}
+    </form>
+
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+{% endblock %}

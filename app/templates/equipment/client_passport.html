@@ -1,0 +1,194 @@
+<!--# Path: app/templates/equipment/client_passport.html-->
+
+{% extends "base.html" %}
+{% block title %}Паспортизация клиента #{{ client.id }}{% endblock %}
+
+{% block tabs %}
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('clients.client_detail', id=client.id) }}">Карточка клиента</a></li>
+    <li class="nav-item"><a class="nav-link active" href="{{ url_for('equipment.client_passport', client_id=client.id) }}">Паспортизация</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.client_equipment_list', client_id=client.id) }}">Список оборудования</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.templates_list') }}">Шаблоны</a></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.client_hierarchy', client_id=client.id) }}">Иерархия</a></li>
+{% endblock %}
+
+{% block content %}
+    <h1>Паспортизация клиента: {{ client.full_name }}</h1>
+
+    <h2>Добавить оборудование</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.type.label }} {{ form.type(class="form-control", id="type") }}
+        </div>
+        <div class="form-group">
+            {{ form.serial_number.label }} {{ form.serial_number(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.brand.label }} {{ form.brand(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.model.label }} {{ form.model(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.parent_id.label }} {{ form.parent_id(class="form-select") }}
+        </div>
+        <div class="form-group">
+            {{ form.latitude.label }} {{ form.latitude(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.longitude.label }} {{ form.longitude(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.kind.label }} {{ form.kind(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.power.label }} {{ form.power(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.depth.label }} {{ form.depth(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.height.label }} {{ form.height(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.width.label }} {{ form.width(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.installation_type.label }} {{ form.installation_type(class="form-select") }}
+        </div>
+        <div class="form-group">
+            {{ form.production_year.label }} {{ form.production_year(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.service_interval.label }} {{ form.service_interval(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.service_life.label }} {{ form.service_life(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.service_price.label }} {{ form.service_price(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.last_service_date.label }} {{ form.last_service_date(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.next_service_date.label }} {{ form.next_service_date(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.warranty_start_date.label }} {{ form.warranty_start_date(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.warranty_end_date.label }} {{ form.warranty_end_date(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.warranty_conditions.label }} {{ form.warranty_conditions(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.photo_path.label }} {{ form.photo_path(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.document_path.label }} {{ form.document_path(class="form-control") }}
+        </div>
+        {{ form.submit(class="btn btn-primary") }}
+    </form>
+
+    <h2>Иерархия оборудования</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Тип</th>
+                <th>Серийный номер</th>
+                <th>Бренд</th>
+                <th>Модель</th>
+                <th>Действия</th>
+                <th>Клиент</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e, level in tree %}
+                <tr>
+                    <td style="padding-left: {{ level * 20 }}px;">{{ "—" * level }} {{ e.type }}</td>
+                    <td>{{ e.serial_number or 'Не указано' }}</td>
+                    <td>{{ e.brand or 'Не указано' }}</td>
+                    <td>{{ e.model or 'Не указано' }}</td>
+                    <td>
+                        <a href="{{ url_for('equipment.edit_equipment', id=e.id) }}" class="btn btn-sm btn-warning">Редактировать</a>
+                        <form method="POST" action="{{ url_for('equipment.delete_equipment', id=e.id) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Вы уверены?');">Удалить</button>
+                        </form>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-info assign-client-btn" data-equipment-id="{{ e.id }}" data-bs-toggle="modal" data-bs-target="#assignClientModal">Клиент</button>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Модальное окно для поиска клиентов -->
+    <div class="modal fade" id="assignClientModal" tabindex="-1" aria-labelledby="assignClientModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="assignClientModalLabel">Привязать к клиенту</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="clientSearchInput" class="form-control" placeholder="Поиск по ФИО, тел, адрес">
+                    <ul id="clientSearchResults" class="list-group mt-2"></ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        let currentEquipmentId = null;
+        document.querySelectorAll('.assign-client-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                currentEquipmentId = this.dataset.equipmentId;
+            });
+        });
+
+        document.getElementById('clientSearchInput').addEventListener('keyup', function() {
+            const q = this.value;
+            if (q.length < 3) return;
+            fetch(`/api/clients/search?q=${encodeURIComponent(q)}`)
+                .then(response => response.json())
+                .then(results => {
+                    const list = document.getElementById('clientSearchResults');
+                    list.innerHTML = '';
+                    results.forEach(client => {
+                        const item = document.createElement('li');
+                        item.className = 'list-group-item';
+                        item.innerHTML = `${client.full_name} (${client.phone}, ${client.address}) <button class="btn btn-sm btn-primary float-end assign-btn" data-client-id="${client.id}">Привязать</button>`;
+                        list.appendChild(item);
+                    });
+                    list.querySelectorAll('.assign-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const clientId = this.dataset.clientId;
+                            fetch(`/equipment/assign_client/${currentEquipmentId}`, {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({client_id: clientId})
+                            }).then(() => {
+                                location.reload();
+                            });
+                        });
+                    });
+                });
+        });
+    </script>
+{% endblock %}
