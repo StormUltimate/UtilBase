@@ -141,7 +141,7 @@
                     <td>{{ (r.description or '—')[:60] }}{% if (r.description or '')|length > 60 %}...{% endif %}</td>
                     <td>{{ r.client.full_name if r.client else (r.full_name or '—') }}</td>
                     <td>{{ r.created_at.strftime('%d.%m.%Y') if r.created_at else '—' }}</td>
-                    <td><a href="{{ url_for('requests.view_request', id=r.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right"></i></a></td>
+                    <td><a href="{{ url_for('requests.view_request', id=r.id, next=request.full_path) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right"></i></a></td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Шаблон чек-листа{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{{ url_for('equipment.checklist_templates_list') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Назад
+    </a>
+</div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">
+        {% if template %}Редактирование шаблона #{{ template.id }}{% else %}Новый шаблон чек-листа{% endif %}
+    </h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('equipment.add_template') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-plus-circle"></i> Новый шаблон оборудования
+        </a>
+        <a href="{{ url_for('equipment.templates_list') }}" class="btn btn-outline-dark btn-sm">
+            <i class="bi bi-grid"></i> Шаблоны оборудования
+        </a>
+    </div>
+</div>
+
+<form method="POST" class="card card-body mb-3">
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label">Название</label>
+            <input type="text" name="name" class="form-control" value="{{ template.name if template else '' }}" required>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Тип оборудования (fallback)</label>
+            <input type="text" name="equipment_type" class="form-control" value="{{ template.equipment_type if template else '' }}" placeholder="Например: boiler">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Привязка к конкретному оборудованию</label>
+            <select name="equipment_id" class="form-select">
+                <option value="">Не привязывать</option>
+                {% for e in equipments %}
+                    <option value="{{ e.id }}" {% if template and template.equipment_id == e.id %}selected{% endif %}>
+                        #{{ e.id }} · {{ e.type or '—' }} {{ e.brand or '' }} {{ e.model or '' }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 form-check mt-4">
+            <input class="form-check-input" type="checkbox" id="is_default" name="is_default" {% if template and template.is_default %}checked{% endif %}>
+            <label class="form-check-label" for="is_default">Базовый шаблон</label>
+        </div>
+        <div class="col-md-3 form-check mt-4">
+            <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {% if not template or template.is_active %}checked{% endif %}>
+            <label class="form-check-label" for="is_active">Активен</label>
+        </div>
+    </div>
+    <div class="mt-3">
+        <button class="btn btn-primary">Сохранить</button>
+    </div>
+</form>
+
+{% if template %}
+<div class="card card-body">
+    <h5>Пункты чек-листа</h5>
+    <form method="POST" action="{{ url_for('equipment.checklist_template_item_add', id=template.id) }}" class="row g-2 mb-3">
+        <div class="col-md-5">
+            <input type="text" class="form-control" name="title" placeholder="Название пункта" required>
+        </div>
+        <div class="col-md-2">
+            <input type="number" class="form-control" name="item_order" value="0" placeholder="Порядок">
+        </div>
+        <div class="col-md-2">
+            <select class="form-select" name="item_type">
+                <option value="boolean">Галка</option>
+                <option value="text">Текст</option>
+                <option value="number">Число</option>
+            </select>
+        </div>
+        <div class="col-md-2 form-check mt-2">
+            <input class="form-check-input" type="checkbox" name="is_required" id="is_required_new" checked>
+            <label class="form-check-label" for="is_required_new">Обязательный</label>
+        </div>
+        <div class="col-md-1">
+            <button class="btn btn-success w-100">+</button>
+        </div>
+    </form>
+
+    <table class="table table-sm table-striped">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Пункт</th>
+                <th>Тип</th>
+                <th>Обяз.</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for it in items %}
+            <tr>
+                <td>{{ it.item_order }}</td>
+                <td>{{ it.title }}</td>
+                <td>{{ it.item_type }}</td>
+                <td>{{ 'Да' if it.is_required else 'Нет' }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('equipment.checklist_template_item_delete', id=template.id, item_id=it.id) }}" style="display:inline;">
+                        <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить пункт?');">Удалить</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

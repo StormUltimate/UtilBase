@@ -1,0 +1,90 @@
+{# Верхняя панель фильтров — параметры через GET (конфигурируемо). #}
+<form id="schedule-filters" method="get" class="card border-0 shadow-sm mb-3" action="{{ url_for('schedule.index') }}">
+    <div class="card-body py-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-lg-auto">
+                <label class="form-label small mb-0" for="anchor-date">Дата</label>
+                <input type="date" class="form-control form-control-sm" name="date" id="anchor-date"
+                       value="{{ anchor_date }}">
+            </div>
+            <div class="col-6 col-md-auto">
+                <label class="form-label small mb-0 d-block">Период</label>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Режим периода">
+                    <input type="radio" class="btn-check" name="view" id="vw-day" value="day" autocomplete="off"
+                           {% if view_mode == 'day' %}checked{% endif %}>
+                    <label class="btn btn-outline-primary" for="vw-day">День</label>
+                    <input type="radio" class="btn-check" name="view" id="vw-week" value="week" autocomplete="off"
+                           {% if view_mode == 'week' %}checked{% endif %}>
+                    <label class="btn btn-outline-primary" for="vw-week">Неделя</label>
+                    <input type="radio" class="btn-check" name="view" id="vw-month" value="month" autocomplete="off"
+                           {% if view_mode == 'month' %}checked{% endif %}>
+                    <label class="btn btn-outline-primary" for="vw-month">Месяц</label>
+                </div>
+            </div>
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label small mb-0" for="sch-q">Поиск (клиент, объект, адрес)</label>
+                <input type="search" class="form-control form-control-sm" name="q" id="sch-q"
+                       value="{{ request.args.get('q', '') }}" placeholder="Начните ввод…" autocomplete="off">
+            </div>
+            <div class="col-12 col-md-4 col-lg-2">
+                <label class="form-label small mb-0">Мастера</label>
+                <select name="workers" class="form-select form-select-sm" multiple size="3"
+                        data-bs-toggle="tooltip" title="Ctrl+клик — несколько">
+                    {% for w in workers %}
+                    <option value="{{ w.id }}"
+                            {% if w.id|string in request.args.getlist('workers') %}selected{% endif %}>
+                        {{ w.full_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-4 col-lg-2">
+                <label class="form-label small mb-0">Статусы</label>
+                <select name="statuses" class="form-select form-select-sm" multiple size="3">
+                    {% for st in statuses %}
+                    <option value="{{ st }}"
+                            {% if st in request.args.getlist('statuses') %}selected{% endif %}>{{ st }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-4 col-lg-2">
+                <label class="form-label small mb-0">Тип оборудования</label>
+                <select name="eq_types" class="form-select form-select-sm" multiple size="3">
+                    {% for t in equipment_types %}
+                    <option value="{{ t }}"
+                            {% if t in request.args.getlist('eq_types') %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-lg-auto">
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" name="maintenance_only" value="1" id="sch-maint"
+                           {% if request.args.get('maintenance_only') %}checked{% endif %}>
+                    <label class="form-check-label small" for="sch-maint">
+                        Только по договорам обслуживания инженерных систем
+                    </label>
+                </div>
+            </div>
+            <div class="col-12 col-lg-auto d-flex flex-wrap gap-1">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Применить</button>
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('schedule.index') }}">Сбросить</a>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Навигация по датам">
+                    <button type="button" class="btn btn-outline-secondary" id="sch-prev" title="Предыдущий период (←)">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="sch-today" title="Сегодня (T)">Сегодня</button>
+                    <button type="button" class="btn btn-outline-secondary" id="sch-tomorrow" title="Завтра">Завтра</button>
+                    <button type="button" class="btn btn-outline-secondary" id="sch-next" title="Следующий период (→)">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-dark" id="sch-view-toggle" title="Простой / расширенный вид">
+                        <i class="bi bi-layout-split"></i>
+                    </button>
+                    <a class="btn btn-outline-dark" id="sch-export-csv" href="{{ url_for('schedule.export_csv') }}{% if request.query_string %}?{{ request.query_string.decode() }}{% endif %}">CSV</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>

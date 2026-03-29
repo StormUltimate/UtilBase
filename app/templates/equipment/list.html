@@ -1,5 +1,3 @@
-<!--Path: app/templates/equipment/list.html-->
-
 {% extends "base.html" %}
 {% block title %}Оборудование{% endblock %}
 
@@ -96,7 +94,7 @@
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="bi bi-funnel"></i> Применить
                 </button>
-                <a href="{% if client %}{{ url_for('equipment.client_equipment_list', client_id=client.id) }}{% else %}{{ url_for('equipment.list_equipment') }}{% endif %}"
+                <a href="{% if client %}{{ url_for('equipment.client_passport', client_id=client.id) }}{% else %}{{ url_for('equipment.list_equipment') }}{% endif %}"
                    class="btn btn-outline-secondary btn-sm">
                     Сбросить
                 </a>
@@ -123,7 +121,11 @@
                 <tbody>
                     {% for e in equipments %}
                     <tr>
-                        <td>{{ e.type or '—' }}</td>
+                        <td>
+                            <a href="{{ url_for('equipment.equipment_item_hierarchy', id=e.id) }}" class="text-decoration-none">
+                                {{ e.type or '—' }}
+                            </a>
+                        </td>
                         <td>{{ e.brand or '—' }}{% if e.model %} / {{ e.model }}{% endif %}</td>
                         <td>{{ e.power or '—' }}</td>
                         <td>{{ e.serial_number or '—' }}</td>
@@ -142,7 +144,7 @@
                             {% endif %}
                         </td>
                         <td class="text-end">
-                            <a href="{{ url_for('equipment.edit_equipment', id=e.id) }}" class="btn btn-sm btn-outline-primary">
+                            <a href="{{ url_for('equipment.edit_equipment', id=e.id, next=request.full_path) }}" class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-pencil"></i>
                             </a>
                             <form method="POST" action="{{ url_for('equipment.delete_equipment', id=e.id) }}" class="d-inline">

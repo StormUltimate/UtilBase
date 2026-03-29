@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+{% block title %}Календарь исполнителей{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('schedule.index') }}"><i class="bi bi-calendar3"></i> План-график заявок</a>
+    </li>
+    <li class="nav-item">
+        <span class="nav-link active"><i class="bi bi-people"></i> Смены</span>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+    <h1 class="mb-2">Календарь исполнителей</h1>
+    <p class="text-muted small mb-2">
+        На этой вкладке показаны только <strong>смены</strong> (не заявки). Несколько мастеров могут работать в один день.
+        <strong>Добавление</strong> — только для выбранного мастера (9:00–19:00). <strong>Удаление дней</strong> — снимает смены <strong>у всех</strong> на выбранные даты.
+    </p>
+
+    <form method="GET" class="mb-3 d-flex flex-wrap align-items-end gap-2">
+        {% set wf = request.args.get('worker_id', 'all') %}
+        <div>
+            <label class="form-label small mb-0">Показать в календаре</label>
+            <select name="worker_id" class="form-select form-select-sm" style="min-width: 220px;">
+                <option value="all">Все</option>
+                {% for w in workers %}
+                <option value="{{ w.id }}" {% if wf != 'all' and (wf|int) == w.id %}selected{% endif %}>
+                    {{ w.full_name }}{% if not w.is_active %} (уволен){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Применить</button>
+        <a href="{{ url_for('workers.worker_calendar') }}" class="btn btn-outline-secondary btn-sm">Сбросить</a>
+    </form>
+
+    <div class="card mb-3 border-primary-subtle" id="shiftModePanel">
+        <div class="card-body py-3">
+            <h2 class="h6 mb-2">Смены по клику в календаре</h2>
+            <div class="row g-2 align-items-end flex-wrap">
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label small mb-0" for="shiftAddWorker">Мастер для добавления</label>
+                    <select id="shiftAddWorker" class="form-select form-select-sm">
+                        <option value="">— выберите мастера —</option>
+                        {% for w in workers %}
+                        {% if w.is_active %}
+                        <option value="{{ w.id }}">{{ w.full_name }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-success btn-sm" id="btnModeAdd" title="Затем кликайте по дням или выделяйте диапазон">
+                        <i class="bi bi-plus-lg"></i> Добавить дни
+                    </button>
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-outline-danger btn-sm" id="btnModeDelete" title="Удаляет смены всех мастеров на выбранные дни">
+                        <i class="bi bi-trash"></i> Удалить дни
+                    </button>
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btnModeCancel">Готово</button>
+                </div>
+            </div>
+            <p class="small mb-0 mt-2" id="shiftModeHint">
+                <span class="text-muted">Сначала нажмите «Добавить дни» или «Удалить дни», затем щёлкайте по ячейкам календаря или выделите мышью несколько дней (в месяце).</span>
+            </p>
+            <div class="alert alert-success py-2 px-3 small mt-2 mb-0 d-none" id="shiftModeToast" role="status"></div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="workerCalModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h5 class="modal-title"><i class="bi bi-ticket-perforated text-primary"></i> Заявка <span id="wModalReqNumber"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body small" id="wModalBody"><p class="text-muted mb-0">Загрузка…</p></div>
+                <div class="modal-footer flex-wrap gap-2 py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <a id="wModalFull" class="btn btn-primary" href="#">Полная карточка</a>
+                    <a id="wModalEdit" class="btn btn-outline-primary d-none" href="#">Редактировать</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="calendar"></div>
+
+    <details class="card border-secondary-subtle mt-3">
+        <summary class="card-header py-2 small text-muted" style="cursor:pointer;">Диапазон дат (дополнительно, без кликов по календарю)</summary>
+        <div class="card-body py-3">
+            <form method="post" action="{{ url_for('workers.bulk_shifts') }}" class="row g-2 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="form-label small mb-0">Исполнитель</label>
+                    <select name="worker_id" class="form-select form-select-sm" required>
+                        <option value="">—</option>
+                        {% for w in workers %}
+                        <option value="{{ w.id }}">{{ w.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-0">С даты</label>
+                    <input type="date" name="date_from" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-0">По дату</label>
+                    <input type="date" name="date_to" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-4 col-md-2">
+                    <label class="form-label small mb-0">Начало</label>
+                    <input type="time" name="time_start" class="form-control form-control-sm" value="09:00">
+                </div>
+                <div class="col-4 col-md-2">
+                    <label class="form-label small mb-0">Конец</label>
+                    <input type="time" name="time_end" class="form-control form-control-sm" value="19:00">
+                </div>
+                <div class="col-12 col-md-auto">
+                    <button type="submit" class="btn btn-success btn-sm">Записать смены</button>
+                </div>
+            </form>
+        </div>
+    </details>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var urlAddDays = {{ url_for('workers.shifts_add_days') | tojson }};
+    var urlDeleteDays = {{ url_for('workers.shifts_delete_days') | tojson }};
+
+    function summaryUrl(id) { return '/requests/api/request/' + id + '/summary'; }
+    var calendarEl = document.getElementById('calendar');
+    var modalBody = document.getElementById('wModalBody');
+    var modalReq = document.getElementById('wModalReqNumber');
+    var modalFull = document.getElementById('wModalFull');
+    var modalEdit = document.getElementById('wModalEdit');
+    var bsModal = new bootstrap.Modal(document.getElementById('workerCalModal'));
+    var hintEl = document.getElementById('shiftModeHint');
+    var toastEl = document.getElementById('shiftModeToast');
+    var btnAdd = document.getElementById('btnModeAdd');
+    var btnDel = document.getElementById('btnModeDelete');
+    var btnCancel = document.getElementById('btnModeCancel');
+    var selWorker = document.getElementById('shiftAddWorker');
+    var mode = null;
+
+    function showToast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.remove('d-none');
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(function() { toastEl.classList.add('d-none'); }, 4500);
+    }
+
+    function ymdLocal(d) {
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+
+    function setMode(m) {
+        mode = m;
+        calendar.setOption('selectable', !!m);
+        btnAdd.classList.toggle('active', m === 'add');
+        btnDel.classList.toggle('active', m === 'delete');
+        document.body.classList.toggle('fc-shift-mode-add', m === 'add');
+        document.body.classList.toggle('fc-shift-mode-delete', m === 'delete');
+        if (m === 'add') {
+            hintEl.innerHTML = '<span class="text-success fw-semibold">Режим добавления.</span> Выберите мастера выше, затем кликайте по дням или выделите диапазон. <span class="text-muted">Только для выбранного мастера, 9:00–19:00.</span>';
+        } else if (m === 'delete') {
+            hintEl.innerHTML = '<span class="text-danger fw-semibold">Режим удаления.</span> Клик или выделение снимает смены <strong>всех</strong> мастеров на эти дни.';
+        } else {
+            hintEl.innerHTML = '<span class="text-muted">Сначала нажмите «Добавить дни» или «Удалить дни», затем щёлкайте по календарю.</span>';
+        }
+    }
+
+    function postJson(url, body) {
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(body)
+        }).then(function(r) { return r.json(); });
+    }
+
+    function postAdd(dates) {
+        var wid = selWorker.value;
+        if (!wid) {
+            alert('Выберите мастера в поле «Мастер для добавления».');
+            return;
+        }
+        postJson(urlAddDays, { worker_id: parseInt(wid, 10), dates: dates, time_start: '09:00', time_end: '19:00' })
+            .then(function(data) {
+                if (!data.ok) {
+                    showToast(data.error || 'Ошибка');
+                    return;
+                }
+                showToast('Сохранено смен: ' + (data.upserted || 0));
+                calendar.refetchEvents();
+            })
+            .catch(function() { showToast('Ошибка сети'); });
+    }
+
+    function postDelete(dates) {
+        if (!dates.length) return;
+        postJson(urlDeleteDays, { dates: dates })
+            .then(function(data) {
+                if (!data.ok) {
+                    showToast(data.error || 'Ошибка');
+                    return;
+                }
+                showToast('Удалено записей смен: ' + (data.deleted || 0));
+                calendar.refetchEvents();
+            })
+            .catch(function() { showToast('Ошибка сети'); });
+    }
+
+    var qs = new URLSearchParams(window.location.search || '');
+    var preW = qs.get('worker_id');
+    if (preW && preW !== 'all' && selWorker) {
+        selWorker.value = preW;
+    }
+
+    function escapeHtml(s) {
+        if (!s) return '';
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function fillModal(data, workerName, workerInactive) {
+        modalReq.textContent = data.request_number || data.id;
+        modalFull.href = data.view_url || '#';
+        if (data.can_edit) {
+            modalEdit.href = data.edit_url || '#';
+            modalEdit.classList.remove('d-none');
+        } else {
+            modalEdit.classList.add('d-none');
+        }
+        var banner = '';
+        if (workerName) {
+            banner = '<div class="alert alert-light border py-2 mb-3 small">' +
+                '<i class="bi bi-person-badge"></i> Исполнитель: <strong>' + escapeHtml(workerName) + '</strong>';
+            if (workerInactive) banner += ' <span class="badge bg-secondary">не в штате</span>';
+            banner += '</div>';
+        }
+        var html = banner + '<dl class="row mb-0">';
+        html += '<dt class="col-sm-3 text-muted">Клиент</dt><dd class="col-sm-9">' + escapeHtml(data.client_name) + '</dd>';
+        html += '<dt class="col-sm-3 text-muted">Адрес</dt><dd class="col-sm-9">' + escapeHtml(data.address) + '</dd>';
+        html += '<dt class="col-sm-3 text-muted">Телефон</dt><dd class="col-sm-9">' + escapeHtml(data.phone) + '</dd>';
+        html += '<dt class="col-sm-3 text-muted">Исполнители</dt><dd class="col-sm-9">' + escapeHtml(data.workers) + '</dd>';
+        html += '<dt class="col-sm-3 text-muted">План</dt><dd class="col-sm-9">' + escapeHtml(data.planned_date);
+        if (data.planned_start || data.planned_end) {
+            html += ' <span class="text-nowrap">(' + escapeHtml((data.planned_start || '—') + ' — ' + (data.planned_end || '—')) + ')</span>';
+        }
+        html += '</dd>';
+        html += '<dt class="col-sm-3 text-muted">Статус</dt><dd class="col-sm-9">' + escapeHtml(data.status) + '</dd>';
+        html += '<dt class="col-sm-3 text-muted">Описание</dt><dd class="col-sm-9">' + escapeHtml(data.description) + '</dd>';
+        html += '</dl>';
+        modalBody.innerHTML = html;
+    }
+
+    function loadEvents(info, success, failure) {
+        var params = new URLSearchParams(window.location.search);
+        if (info && info.start && info.end) {
+            params.set('start', info.start.toISOString());
+            params.set('end', info.end.toISOString());
+        }
+        var qs = params.toString();
+        var url = '/workers/api/events' + (qs ? '?' + qs : '');
+        fetch(url).then(function(r) { return r.json(); }).then(success).catch(failure);
+    }
+
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+        },
+        buttonText: { today: 'Сегодня', month: 'Месяц', week: 'Неделя', day: 'День', list: 'Список' },
+        locale: 'ru',
+        firstDay: 1,
+        editable: false,
+        selectable: false,
+        selectMirror: true,
+        displayEventTime: true,
+        slotEventOverlap: true,
+        eventMinHeight: 44,
+        slotDuration: '01:00:00',
+        slotLabelInterval: '01:00',
+        slotMinTime: '09:00:00',
+        slotMaxTime: '19:00:00',
+        views: {
+            dayGridMonth: {
+                eventDisplay: 'block',
+                dayMaxEvents: false,
+                moreLinkClick: 'day'
+            }
+        },
+        events: loadEvents,
+        dateClick: function(info) {
+            if (!mode) return;
+            var d = ymdLocal(info.date);
+            if (mode === 'add') {
+                postAdd([d]);
+            } else if (mode === 'delete') {
+                postDelete([d]);
+            }
+        },
+        select: function(info) {
+            if (!mode) return;
+            var dates = [];
+            var d0 = new Date(info.start);
+            var d1 = new Date(info.end);
+            d1.setMilliseconds(d1.getMilliseconds() - 1);
+            var cur = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate());
+            var last = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
+            while (cur <= last) {
+                dates.push(ymdLocal(cur));
+                cur.setDate(cur.getDate() + 1);
+            }
+            calendar.unselect();
+            if (mode === 'add') {
+                postAdd(dates);
+            } else if (mode === 'delete') {
+                postDelete(dates);
+            }
+        },
+        eventClick: function(info) {
+            if (mode === 'delete') {
+                info.jsEvent.preventDefault();
+                var d = ymdLocal(info.event.start);
+                postDelete([d]);
+                return;
+            }
+            if (mode === 'add') {
+                info.jsEvent.preventDefault();
+                return;
+            }
+            info.jsEvent.preventDefault();
+            if (info.event.extendedProps && info.event.extendedProps.layer === 'shift') {
+                return;
+            }
+            var rid = info.event.extendedProps.requestId;
+            var wname = info.event.extendedProps.workerName;
+            var winact = info.event.extendedProps.workerInactive;
+            modalBody.innerHTML = '<p class="text-muted mb-0">Загрузка…</p>';
+            bsModal.show();
+            fetch(summaryUrl(rid))
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.error) { modalBody.innerHTML = '<p class="text-danger">Нет доступа</p>'; return; }
+                    fillModal(data, wname, winact);
+                })
+                .catch(function() { modalBody.innerHTML = '<p class="text-danger">Ошибка</p>'; });
+        },
+        eventTimeFormat: { hour: '2-digit', minute: '2-digit' },
+        height: 'auto',
+        allDaySlot: false,
+        eventContent: function(arg) {
+            var layer = arg.event.extendedProps.layer;
+            var wn = arg.event.extendedProps.workerName || '';
+            var v = arg.view.type;
+            var accent = arg.event.borderColor || '#0d6efd';
+            var bg = arg.event.backgroundColor || '#e9ecef';
+
+            if (v === 'timeGridWeek' || v === 'timeGridDay') {
+                if (layer === 'shift') {
+                    return { html:
+                        '<div class="wcal-strip wcal-strip--shift" style="--wcal-accent:' + accent + ';background:' + bg + '">' +
+                        '<div class="wcal-vname" title="' + escapeHtml(wn) + '">' + escapeHtml(wn) + '</div>' +
+                        '<div class="wcal-strip-main">' +
+                        '<span class="wcal-tag">Смена</span>' +
+                        '<span class="wcal-when">' + escapeHtml(arg.timeText || '') + '</span>' +
+                        '</div></div>' };
+                }
+                if (layer === 'workerAssignment') {
+                    var st = arg.event.extendedProps.shortTitle || '';
+                    return { html:
+                        '<div class="wcal-strip wcal-strip--req" style="--wcal-accent:' + accent + ';background:' + bg + '">' +
+                        '<div class="wcal-vname wcal-vname--on-color" title="' + escapeHtml(wn) + '">' + escapeHtml(wn) + '</div>' +
+                        '<div class="wcal-strip-main wcal-strip-main--req">' +
+                        '<span class="wcal-req-num">' + escapeHtml(st) + '</span>' +
+                        '<span class="wcal-when">' + escapeHtml(arg.timeText || '') + '</span>' +
+                        '</div></div>' };
+                }
+                var time = arg.timeText || '';
+                var title = (arg.event.title || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                var inner = wn ? (wn + ' · ' + time) : time;
+                return { html: '<div class="fc-w-cal-compact" title="' + title + '">' + escapeHtml(inner) + '</div>' };
+            }
+            if (v === 'dayGridMonth') {
+                if (layer === 'shift' && wn) {
+                    return { html:
+                        '<div class="wcal-month-shift wcal-month-shift--shift" style="border-left:3px solid ' + accent + ';background:' + bg + '">' +
+                        '<span class="wcal-month-v">' + escapeHtml(wn) + '</span>' +
+                        '<span class="wcal-month-t">' + escapeHtml(arg.timeText || '') + '</span></div>' };
+                }
+                if (layer === 'workerAssignment' && wn) {
+                    var stM = arg.event.extendedProps.shortTitle || '';
+                    return { html:
+                        '<div class="wcal-month-shift wcal-month-shift--req" style="border-left:3px solid ' + accent + ';background:' + bg + '">' +
+                        '<span class="wcal-month-v wcal-month-v--on">' + escapeHtml(wn) + '</span>' +
+                        '<span class="wcal-month-t wcal-month-t--req">' + escapeHtml(stM) +
+                        ' <span class="wcal-month-time">' + escapeHtml(arg.timeText || '') + '</span></span></div>' };
+                }
+                var bgM = arg.event.backgroundColor || '#6c757d';
+                var fgM = arg.event.textColor || '#ffffff';
+                var timeM = (arg.timeText || '').replace(/</g, '&lt;');
+                var titleM = (arg.event.title || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                return {
+                    html: '<div class="fc-month-chip" style="background-color:' + bgM + ';color:' + fgM + ';border:1px solid ' + bgM + ';">' +
+                        '<span class="fc-event-time">' + timeM + '</span> ' +
+                        '<span class="fc-event-title fc-month-title">' + titleM + '</span></div>'
+                };
+            }
+            return undefined;
+        }
+    });
+    calendar.render();
+
+    btnAdd.addEventListener('click', function() {
+        setMode(mode === 'add' ? null : 'add');
+    });
+    btnDel.addEventListener('click', function() {
+        setMode(mode === 'delete' ? null : 'delete');
+    });
+    btnCancel.addEventListener('click', function() {
+        setMode(null);
+        calendar.unselect();
+    });
+});
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    #calendar { max-width: 100%; margin: 0 auto; background: #fff; border: 1px solid #e0e0e0; border-radius: 0.5rem; padding: 1rem; }
+    .fc-toolbar { background: #f8f9fa; border-bottom: 1px solid #e0e0e0; padding: 10px; flex-wrap: wrap; gap: 0.25rem; }
+    .fc-button { background: #0d6efd; color: #fff; border: none; border-radius: 5px; padding: 6px 12px; }
+    body.fc-shift-mode-add #calendar, body.fc-shift-mode-delete #calendar { cursor: crosshair; }
+    body.fc-shift-mode-add .fc-daygrid-day-frame { outline-offset: -2px; }
+    body.fc-shift-mode-delete .fc-daygrid-day-frame { outline-offset: -2px; }
+    .fc-timegrid-event { border-radius: 3px; overflow: hidden; }
+    .fc-w-cal-compact { font-size: 0.68rem; line-height: 1.2; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .fc-timegrid-slot { height: 2.5em; }
+    .fc-timegrid .fc-event:not(.fc-worker-shift-slab):not(.fc-worker-assignment-slab) { border: none; }
+    .fc-timegrid-event.fc-worker-shift-slab,
+    .fc-timegrid-event.fc-worker-assignment-slab {
+        border: none !important;
+        font-size: inherit;
+    }
+    .fc-timegrid-event.fc-worker-shift-slab .fc-event-main,
+    .fc-timegrid-event.fc-worker-assignment-slab .fc-event-main {
+        padding: 0 !important;
+    }
+    .wcal-strip {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        height: 100%;
+        min-height: 40px;
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+    }
+    .wcal-strip--shift { border-left: 4px solid var(--wcal-accent, #0d6efd); }
+    .wcal-strip--req { border-left: 4px solid var(--wcal-accent, #0d6efd); }
+    .wcal-vname {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        font-size: 0.62rem;
+        font-weight: 700;
+        line-height: 1;
+        padding: 6px 3px;
+        max-width: 1.5rem;
+        min-width: 1.25rem;
+        flex: 0 0 auto;
+        color: #212529;
+        background: rgba(255,255,255,0.5);
+        border-right: 1px solid rgba(0,0,0,0.12);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-align: center;
+    }
+    .wcal-vname--on-color {
+        color: #fff;
+        background: rgba(0,0,0,0.22);
+        border-right-color: rgba(255,255,255,0.28);
+    }
+    .wcal-strip-main {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 4px 6px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 2px;
+    }
+    .wcal-strip-main--req { color: #fff; }
+    .wcal-tag { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.04em; color: #495057; font-weight: 600; }
+    .wcal-when { font-size: 0.62rem; opacity: 0.92; }
+    .wcal-req-num { font-size: 0.68rem; font-weight: 700; }
+    .wcal-month-shift {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        width: 100%;
+        border-radius: 4px;
+        overflow: hidden;
+        box-sizing: border-box;
+        min-height: 1.75em;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+    }
+    .wcal-month-v {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        font-size: 0.55rem;
+        font-weight: 700;
+        padding: 2px 1px;
+        max-width: 1.1rem;
+        flex: 0 0 auto;
+        color: #212529;
+        background: rgba(255,255,255,0.45);
+        border-right: 1px solid rgba(0,0,0,0.1);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-align: center;
+    }
+    .wcal-month-t { font-size: 0.65rem; padding: 2px 4px; flex: 1; min-width: 0; line-height: 1.2; }
+    .wcal-month-shift--req .wcal-month-v--on {
+        color: #fff;
+        background: rgba(0,0,0,0.22);
+        border-right-color: rgba(255,255,255,0.25);
+    }
+    .wcal-month-t--req { color: #fff; font-size: 0.72rem; font-weight: 700; }
+    .wcal-month-time { opacity: 0.88; font-size: 0.65rem; font-weight: 400; }
+    .fc-daygrid .fc-daygrid-event.fc-event {
+        min-height: 1.75em !important; padding: 0 !important; margin-bottom: 4px !important;
+        border: none !important; background: transparent !important; opacity: 1 !important;
+    }
+    .fc-daygrid .fc-month-chip { padding: 4px 6px; border-radius: 4px; width: 100%; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; }
+    #workerCalModal .modal-body dl { font-size: 0.95rem; }
+</style>
+{% endblock %}

@@ -1,1 +1,1 @@
-# analytics blueprint 
+from .routes import analytics_bp

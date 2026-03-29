@@ -1,0 +1,10 @@
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header py-2 small fw-semibold">Легенда</div>
+    <div class="card-body py-2 small">
+        {% from 'schedule/macros.html' import legend_item %}
+        {{ legend_item('Смена (фон)', 'schedule-legend-swatch--shift') }}
+        {{ legend_item('Заявка по договору (маркер)', 'schedule-legend-swatch--contract') }}
+        {{ legend_item('Пересечение по времени', 'schedule-legend-swatch--overlap') }}
+        {{ legend_item('Вне смены', 'schedule-legend-swatch--outside') }}
+    </div>
+</div>

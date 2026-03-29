@@ -1,0 +1,296 @@
+/**
+ * План-график — стили с CSS variables для переноса в другой проект.
+ * Настройка: --schedule-hour-height, --schedule-hour-start, --schedule-hour-end, --schedule-slot-minutes
+ */
+:root {
+  --schedule-hour-start: 6;
+  --schedule-hour-end: 22;
+  --schedule-slot-minutes: 30;
+  --schedule-hour-height: 48px;
+  --schedule-worker-col-width: 200px;
+  --schedule-shift-alpha: 0.35;
+  --schedule-border: #dee2e6;
+  --schedule-grid: #e9ecef;
+}
+
+.schedule-page.schedule--simple {
+  --schedule-hour-height: 36px;
+}
+
+.schedule-page.schedule--extended {
+  --schedule-hour-height: 56px;
+}
+
+.schedule-timeline-wrap {
+  min-height: 320px;
+}
+
+.schedule-root {
+  outline: none;
+}
+
+.schedule-root:focus-visible {
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.35);
+  border-radius: 0.25rem;
+}
+
+/* --- Легенда --- */
+.schedule-legend-swatch {
+  width: 1rem;
+  height: 0.75rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.schedule-legend-swatch--shift {
+  background: rgba(25, 135, 84, var(--schedule-shift-alpha));
+  border: 1px solid #198754;
+}
+.schedule-legend-swatch--contract {
+  background: #fff;
+  border: 2px dashed #0d6efd;
+}
+.schedule-legend-swatch--overlap {
+  box-shadow: 0 0 0 2px #dc3545;
+  background: #f8d7da;
+}
+.schedule-legend-swatch--outside {
+  background: repeating-linear-gradient(
+    -45deg,
+    #fff3cd,
+    #fff3cd 4px,
+    #ffecb5 4px,
+    #ffecb5 8px
+  );
+  border: 1px solid #ffc107;
+}
+
+/* --- Сетка таймлайна --- */
+.schedule-grid-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  font-size: 0.78rem;
+}
+
+.schedule-grid-table th,
+.schedule-grid-table td {
+  border-bottom: 1px solid var(--schedule-border);
+  vertical-align: top;
+}
+
+.schedule-worker-label {
+  width: var(--schedule-worker-col-width);
+  min-width: var(--schedule-worker-col-width);
+  max-width: var(--schedule-worker-col-width);
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #f8f9fa;
+  padding: 0.35rem 0.5rem;
+  border-right: 1px solid var(--schedule-border);
+}
+
+.schedule-worker-label-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.schedule-worker-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.schedule-worker-meta {
+  font-size: 0.68rem;
+  color: #6c757d;
+}
+
+.schedule-day-head {
+  text-align: center;
+  padding: 0.25rem;
+  background: #f1f3f5;
+  font-weight: 600;
+  border-left: 1px solid var(--schedule-border);
+}
+
+.schedule-day-cell {
+  position: relative;
+  border-left: 1px solid var(--schedule-border);
+  padding: 0;
+  min-width: 140px;
+}
+
+.schedule-hour-grid {
+  position: relative;
+  height: calc(
+    (var(--schedule-hour-end) - var(--schedule-hour-start)) * var(--schedule-hour-height)
+  );
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent calc(var(--schedule-hour-height) - 1px),
+    var(--schedule-grid) calc(var(--schedule-hour-height) - 1px),
+    var(--schedule-grid) var(--schedule-hour-height)
+  );
+}
+
+.schedule-hour-labels {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2.5rem;
+  height: 100%;
+  pointer-events: none;
+  color: #868e96;
+  font-size: 0.65rem;
+}
+
+.schedule-hour-labels span {
+  position: absolute;
+  left: 2px;
+  transform: translateY(-50%);
+}
+
+.schedule-layer-shifts,
+.schedule-layer-requests {
+  position: absolute;
+  left: 2.5rem;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.schedule-bar-shift {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 3px;
+  opacity: var(--schedule-shift-alpha);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
+.schedule-bar-request {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  border-radius: 4px;
+  padding: 2px 4px;
+  overflow: hidden;
+  cursor: grab;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  z-index: 2;
+  color: #fff;
+  font-size: 0.68rem;
+  line-height: 1.2;
+}
+
+.schedule-bar-request:active {
+  cursor: grabbing;
+}
+
+.schedule-bar-request.schedule-bar--overlap {
+  box-shadow: 0 0 0 2px #dc3545;
+  z-index: 4;
+}
+
+.schedule-bar-request.schedule-bar--outside {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.15),
+    rgba(255, 255, 255, 0.15) 4px,
+    rgba(0, 0, 0, 0.08) 4px,
+    rgba(0, 0, 0, 0.08) 8px
+  ) !important;
+  border: 2px dashed #ffc107 !important;
+}
+
+.schedule-bar-request .schedule-req-title {
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.schedule-bar-request .schedule-req-time {
+  opacity: 0.9;
+  font-size: 0.62rem;
+}
+
+.schedule-badge-contract {
+  display: inline-block;
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.25);
+  padding: 0 3px;
+  border-radius: 2px;
+  margin-left: 2px;
+}
+
+/* Месяц: компактная сетка */
+.schedule-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  background: var(--schedule-border);
+  border: 1px solid var(--schedule-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.schedule-month-cell {
+  background: #fff;
+  min-height: 4.5rem;
+  padding: 4px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.schedule-month-cell--muted {
+  background: #f8f9fa;
+  color: #adb5bd;
+}
+
+.schedule-month-cell--today {
+  outline: 2px solid #0d6efd;
+}
+
+/* Неназначенные */
+.schedule-unassigned-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.schedule-unassigned-chip {
+  display: block;
+  padding: 0.35rem 0.5rem;
+  margin-bottom: 0.35rem;
+  border: 1px solid var(--schedule-border);
+  border-radius: 4px;
+  background: #fff;
+  cursor: grab;
+  font-size: 0.78rem;
+}
+
+.schedule-unassigned-chip:hover {
+  background: #f8f9fa;
+}
+
+.schedule-drop-target {
+  outline: 2px dashed #0d6efd;
+  outline-offset: 2px;
+}
+
+@media (max-width: 991.98px) {
+  .schedule-side {
+    max-height: none;
+  }
+}

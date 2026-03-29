@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}{% if contract %}Редактирование мастера{% else %}Новый договор на обслуживание{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+.contract-wizard { max-width: 1100px; margin: 0 auto; }
+.wizard-steps { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1.25rem; }
+.wizard-steps .badge { cursor: pointer; font-weight: 600; padding: 0.5rem 0.75rem; }
+.wizard-panel { display: none; }
+.wizard-panel.active { display: block; }
+.drop-zone {
+  border: 2px dashed var(--bs-border-color);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--bs-secondary);
+  background: var(--bs-light);
+}
+.drop-zone.dragover { border-color: var(--bs-primary); background: rgba(13,110,253,0.08); }
+.contract-print-preview {
+  border: 1px solid #dee2e6;
+  border-radius: 0.5rem;
+  padding: 1.5rem 2rem;
+  background: #fff;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 11pt;
+  line-height: 1.45;
+}
+.contract-print-preview h1 { font-size: 14pt; text-align: center; margin-bottom: 1rem; }
+.contract-print-preview .muted { color: #555; font-size: 10pt; }
+@media print {
+  .sidebar, .topbar, .wizard-steps, .no-print { display: none !important; }
+  .content-panel { padding: 0 !important; }
+  .contract-print-preview { border: none; }
+}
+</style>
+{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3 no-print">
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('contracts.list_contracts') }}"><i class="bi bi-arrow-left"></i> К списку договоров</a></li>
+    <li class="nav-item"><span class="nav-link active"><i class="bi bi-magic"></i> Мастер договора</span></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="contract-wizard">
+  <h2 class="mb-2">{% if contract %}Договор № {{ contract.document_number or contract.id }} — мастер{% else %}Новый договор на обслуживание{% endif %}</h2>
+  <p class="text-muted small mb-4">Пошаговое оформление: заказчик, объект, оборудование, виды работ и стоимость, печатная форма. Технологический стек: серверное сохранение в UtilBase (Flask).</p>
+
+  <div class="wizard-steps no-print" id="wizardStepBar" role="tablist">
+    <span class="badge rounded-pill bg-primary" data-go="1">1. Заказчик</span>
+    <span class="badge rounded-pill bg-secondary" data-go="2">2. Объект</span>
+    <span class="badge rounded-pill bg-secondary" data-go="3">3. Оборудование</span>
+    <span class="badge rounded-pill bg-secondary" data-go="4">4. Работы и цены</span>
+    <span class="badge rounded-pill bg-secondary" data-go="5">5. Условия</span>
+    <span class="badge rounded-pill bg-secondary" data-go="6">6. Предпросмотр</span>
+  </div>
+
+  <form id="wizardForm" method="post" enctype="multipart/form-data" action="{% if contract %}{{ url_for('contracts.edit_contract_wizard', contract_id=contract.id) }}{% else %}{{ url_for('contracts.create_contract_wizard') }}{% endif %}">
+    <input type="hidden" name="wizard_payload" id="wizardPayload" value="">
+    <input type="hidden" name="save_mode" id="saveMode" value="final">
+    <input type="hidden" name="client_id" id="hiddenClientId" value="{{ wizard.client_id or '' }}">
+
+    <div class="wizard-panel active" data-step="1">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header fw-semibold"><i class="bi bi-person-badge"></i> Заказчик</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Поиск в базе</label>
+              <div class="input-group">
+                <input type="text" class="form-control" id="clientSearch" placeholder="ФИО, телефон, адрес…" autocomplete="off">
+                <button class="btn btn-outline-secondary" type="button" id="clientSearchBtn">Найти</button>
+              </div>
+              <div class="list-group mt-1 position-absolute z-3 shadow-sm d-none" id="clientSearchResults" style="max-width: 640px;"></div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Тип заказчика</label>
+              <select class="form-select" id="counterparty_kind" name="counterparty_kind">
+                <option value="">Не указано</option>
+                <option value="individual">Физическое лицо</option>
+                <option value="sole_proprietor">ИП</option>
+                <option value="legal_entity">Юридическое лицо</option>
+                <option value="commercial_household">Комбыт</option>
+                <option value="government">Госучреждение</option>
+              </select>
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+              <a class="btn btn-outline-primary" href="{{ url_for('clients.add_client') }}" target="_blank" rel="noopener"><i class="bi bi-person-plus"></i> Создать нового клиента</a>
+            </div>
+            <div class="col-12"><hr class="my-1"><div class="small text-muted mb-2">Реквизиты для бланка договора</div></div>
+            <div class="col-md-6"><label class="form-label">Наименование / ФИО</label><input class="form-control" id="snap_legal_name" type="text"></div>
+            <div class="col-md-3"><label class="form-label">ИНН</label><input class="form-control" id="snap_inn" type="text"></div>
+            <div class="col-md-3"><label class="form-label">КПП</label><input class="form-control" id="snap_kpp" type="text"></div>
+            <div class="col-md-4"><label class="form-label">ОГРН / ОГРНИП</label><input class="form-control" id="snap_ogrn" type="text"></div>
+            <div class="col-md-8"><label class="form-label">Юридический адрес</label><input class="form-control" id="snap_legal_address" type="text"></div>
+            <div class="col-md-6"><label class="form-label">Фактический адрес</label><input class="form-control" id="snap_actual_address" type="text"></div>
+            <div class="col-md-6"><label class="form-label">Контактное лицо</label><input class="form-control" id="snap_contact_person" type="text"></div>
+            <div class="col-md-4"><label class="form-label">Телефон</label><input class="form-control" id="snap_phone" type="text"></div>
+            <div class="col-md-4"><label class="form-label">Email</label><input class="form-control" id="snap_email" type="email"></div>
+            <div class="col-12"><label class="form-label">Банковские реквизиты</label><textarea class="form-control" id="snap_bank" rows="2"></textarea></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wizard-panel" data-step="2">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header fw-semibold"><i class="bi bi-geo-alt"></i> Объект обслуживания</div>
+        <div class="card-body">
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="use_client_address">
+            <label class="form-check-label" for="use_client_address">Совпадает с адресом заказчика (фактический)</label>
+          </div>
+          <label class="form-label">Адрес объекта</label>
+          <textarea class="form-control" id="service_object_address" rows="3" placeholder="Полный адрес объекта, подъезд, этаж…"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="wizard-panel" data-step="3">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-semibold"><i class="bi bi-tools"></i> Оборудование</span>
+          <button type="button" class="btn btn-sm btn-primary no-print" id="addEquipmentBtn"><i class="bi bi-plus-lg"></i> Добавить единицу</button>
+        </div>
+        <div class="card-body" id="equipmentWrap"></div>
+        <div class="card-footer small text-muted">Для котлов и бойлеров укажите тип топлива. <strong>Природный газ</strong> для данного договора не допускается — при выборе газа сохранение будет заблокировано.</div>
+      </div>
+    </div>
+
+    <div class="wizard-panel" data-step="4">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header fw-semibold"><i class="bi bi-table"></i> Виды работ, периодичность и цены</div>
+        <div class="card-body" id="workTablesWrap"></div>
+        <div class="card-footer small">Итог по договору пересчитывается автоматически с учётом срока и частоты.</div>
+      </div>
+    </div>
+
+    <div class="wizard-panel" data-step="5">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header fw-semibold"><i class="bi bi-file-earmark-text"></i> Параметры договора</div>
+        <div class="card-body row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Тип договора (системы)</label>
+            <select class="form-select" id="contract_type">
+              <option value="комплексный">Комплексный</option>
+              <option value="отопление">Отопление</option>
+              <option value="вентиляция">Вентиляция</option>
+              <option value="водоснабжение">Водоснабжение</option>
+              <option value="канализация">Канализация</option>
+              <option value="электрика">Электрика</option>
+              <option value="другое">Другое</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Номер договора</label>
+            <input class="form-control" id="document_number" placeholder="Авто после сохранения">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Дата заключения</label>
+            <input class="form-control" type="date" id="conclusion_date">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Начало действия</label>
+            <input class="form-control" type="date" id="start_date">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Окончание</label>
+            <input class="form-control" type="date" id="end_date">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Срок, мес. (подсказка)</label>
+            <input class="form-control" type="number" id="duration_months" min="1" max="120" value="12">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Условия оплаты</label>
+            <select class="form-select" id="payment_terms">
+              <option value="prepaid">Предоплата</option>
+              <option value="acts" selected>По актам</option>
+              <option value="other">Иное</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Комментарий к оплате</label>
+            <input class="form-control" id="payment_terms_note" placeholder="Необязательно">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Дополнительные условия (текст)</label>
+            <textarea class="form-control" id="term_note" rows="3"></textarea>
+          </div>
+          <div class="col-12">
+            <div class="alert alert-info mb-0">
+              <div class="d-flex justify-content-between flex-wrap gap-2">
+                <span>Расчётная сумма договора (по видам работ):</span>
+                <strong id="totalDisplay">0 ₽</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wizard-panel" data-step="6">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header fw-semibold"><i class="bi bi-printer"></i> Предпросмотр бланка</div>
+        <div class="card-body">
+          <div class="contract-print-preview" id="printPreview"></div>
+          <div class="mt-3 no-print d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-outline-secondary" id="btnPrint"><i class="bi bi-printer"></i> Печать</button>
+            {% if contract %}
+            <a class="btn btn-outline-success" target="_blank" href="{{ url_for('clients.print_contract', contract_id=contract.id) }}"><i class="bi bi-file-pdf"></i> PDF (текущая карточка)</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between gap-2 mt-3 no-print">
+      <button type="button" class="btn btn-outline-secondary" id="btnPrev"><i class="bi bi-chevron-left"></i> Назад</button>
+      <div class="d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-warning" id="btnDraft"><i class="bi bi-save"></i> Сохранить черновик</button>
+        <button type="button" class="btn btn-primary" id="btnFinal"><i class="bi bi-check2-circle"></i> Сохранить и сформировать перечень</button>
+        <button type="button" class="btn btn-outline-primary" id="btnNext">Далее <i class="bi bi-chevron-right"></i></button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+window.__WIZARD_BOOT = {{ wizard|tojson }};
+window.__WIZARD_WORK_KINDS = {{ work_kind_choices|tojson }};
+window.__WIZARD_EQ_CAT = {{ equipment_categories|tojson }};
+window.__WIZARD_FUEL = {{ fuel_choices|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/contract_wizard.js') }}"></script>
+{% endblock %}

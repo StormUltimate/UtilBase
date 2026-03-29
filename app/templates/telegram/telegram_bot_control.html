@@ -1,0 +1,987 @@
+<!-- Путь: Q:\SpasatelWeb\app\templates\telegram\telegram_bot_control.html -->
+
+{% extends "base.html" %}
+
+{% block title %}Управление Telegram-ботом{% endblock %}
+
+{% block extra_css %}
+<style>
+    .telegram-container {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    .telegram-container h1 {
+        font-size: 24px;
+        margin: 20px 20px 10px;
+        color: #333;
+        text-align: center;
+    }
+    .telegram-section {
+        background-color: #fff;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        padding: 24px;
+        margin-bottom: 24px;
+        max-width: 1200px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .telegram-section-header {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 16px;
+        gap: 16px;
+    }
+    .telegram-section h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #374151;
+        margin: 0;
+    }
+    .telegram-button {
+        display: flex;
+        align-items: center;
+        padding: 8px 16px;
+        border-radius: 4px;
+        color: #fff;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    .telegram-button-blue {
+        background-color: #3b82f6;
+    }
+    .telegram-button-blue:hover {
+        background-color: #2563eb;
+    }
+    .telegram-button-yellow {
+        background-color: #f59e0b;
+    }
+    .telegram-button-yellow:hover {
+        background-color: #d97706;
+    }
+    .telegram-button-red {
+        background-color: #ef4444;
+    }
+    .telegram-button-red:hover {
+        background-color: #dc2626;
+    }
+    .telegram-button-green {
+        background-color: #10b981;
+    }
+    .telegram-button-green:hover {
+        background-color: #059669;
+    }
+    .telegram-button-purple {
+        background-color: #8b5cf6;
+    }
+    .telegram-button-purple:hover {
+        background-color: #7c3aed;
+    }
+    .telegram-button-gray {
+        background-color: #6b7280;
+    }
+    .telegram-button-gray:hover {
+        background-color: #4b5563;
+    }
+    .telegram-button.opacity-50 {
+        opacity: 0.5;
+    }
+    .telegram-button.cursor-not-allowed {
+        cursor: not-allowed;
+    }
+    .telegram-channel-list {
+        margin-top: 16px;
+    }
+    .telegram-channel-item {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .telegram-channel-item.favorite {
+        background-color: #f0f4ff;
+        border-color: #3b82f6;
+    }
+    .telegram-channel-details {
+        text-align: center;
+    }
+    .telegram-channel-info {
+        font-size: 14px;
+        color: #6b7280;
+        margin: 0;
+    }
+    .telegram-channel-status {
+        font-weight: 600;
+    }
+    .telegram-channel-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+    }
+    .telegram-channel-empty {
+        color: #6b7280;
+        text-align: center;
+    }
+    .telegram-bot-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        justify-content: center;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .telegram-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .telegram-modal-content {
+        background-color: #fff;
+        padding: 24px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        max-width: 400px;
+        width: 100%;
+    }
+    .telegram-modal h3 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 16px;
+        text-align: center;
+    }
+    .telegram-modal-error {
+        color: #dc2626;
+        margin-bottom: 16px;
+        text-align: center;
+    }
+    .telegram-modal .telegram-button {
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+    .hidden {
+        display: none !important;
+    }
+    .spinner:not(.hidden) + span {
+        margin-left: 0.5rem;
+    }
+    .animate-spin {
+        animation: spin 1s linear infinite;
+    }
+    .console {
+        background-color: #1e1e1e;
+        color: #ffffff;
+        padding: 10px;
+        border-radius: 5px;
+        max-height: 200px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 14px;
+        margin-top: 20px;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .console .error {
+        color: #ff5555;
+    }
+    .bot-status {
+        font-size: 16px;
+        font-weight: bold;
+        margin-top: 10px;
+        text-align: center;
+    }
+    .status-running {
+        color: #10b981;
+    }
+    .status-stopped {
+        color: #ef4444;
+    }
+    .status-error {
+        color: #ff5555;
+    }
+    .add-chat-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+        margin-bottom: 20px;
+        align-items: center;
+    }
+    .add-chat-form input[type="text"] {
+        padding: 8px;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+        font-size: 14px;
+        width: 200px;
+    }
+    .add-chat-form input[type="checkbox"] {
+        margin-left: 5px;
+    }
+    .add-chat-form label {
+        font-size: 14px;
+        color: #374151;
+    }
+    .edit-title-input {
+        padding: 4px;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+        font-size: 14px;
+        width: 150px;
+    }
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="telegram-container">
+    <h1>Управление Telegram-ботом</h1>
+
+    <!-- Форма для ручного добавления чата -->
+    <div class="telegram-section">
+        <div class="telegram-section-header">
+            <h2>Добавить чат вручную</h2>
+        </div>
+        <div class="add-chat-form">
+            <input type="text" id="chatIdInput" placeholder="Введите chat_id (например, -100123456789)" />
+            <input type="text" id="chatTitleInput" placeholder="Введите название чата" />
+            <label>
+                <input type="checkbox" id="downloadEnabledInput" />
+                Включить скачивание
+            </label>
+            <button onclick="addChat()" class="telegram-button telegram-button-green flex items-center">
+                <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                Добавить
+            </button>
+        </div>
+    </div>
+
+    <!-- Список чатов -->
+    <div class="telegram-section">
+        <div class="telegram-section-header">
+            <h2>Список чатов</h2>
+            <button onclick="scanChannels()" id="scanChannelsBtn" class="telegram-button telegram-button-blue flex items-center {% if not bot_started %} opacity-50 cursor-not-allowed {% endif %}" {% if not bot_started %} disabled {% endif %}>
+                <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                Попробовать сканировать
+            </button>
+        </div>
+        <div id="channelList" class="telegram-channel-list">
+            {% if channels %}
+            {% for channel in channels %}
+            <div class="telegram-channel-item {% if channel.is_favorite %}favorite{% endif %}" id="chat-{{ channel.chat_id }}">
+                <div class="telegram-channel-details">
+                    <p class="telegram-channel-info">
+                        ID: {{ channel.chat_id }} | Название:
+                        <span id="titleDisplay-{{ channel.chat_id }}">{{ channel.title }}</span>
+                        <input type="text" id="titleInput-{{ channel.chat_id }}" class="edit-title-input hidden" value="{{ channel.title }}" />
+                        <button onclick="editTitle('{{ channel.chat_id }}')" id="editBtn-{{ channel.chat_id }}" class="telegram-button telegram-button-blue" style="padding: 2px 8px; font-size: 12px;">Изменить</button>
+                        <button onclick="saveTitle('{{ channel.chat_id }}')" id="saveBtn-{{ channel.chat_id }}" class="telegram-button telegram-button-green hidden" style="padding: 2px 8px; font-size: 12px;">Сохранить</button>
+                    </p>
+                    <p class="telegram-channel-info">Скачивание: <span id="downloadStatus-{{ channel.chat_id }}" class="telegram-channel-status">{{ 'Включено' if channel.download_enabled else 'Отключено' }}</span></p>
+                    <p class="telegram-channel-info">Избранное: <span id="favoriteStatus-{{ channel.chat_id }}">{{ 'Да' if channel.is_favorite else 'Нет' }}</span></p>
+                </div>
+                <div class="telegram-channel-actions">
+                    <button onclick="toggleFavorite('{{ channel.chat_id }}', {% if channel.is_favorite %} 'remove' {% else %} 'add' {% endif %})"
+                            class="telegram-button telegram-button-purple flex items-center"
+                            id="favoriteBtn-{{ channel.chat_id }}">
+                        <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                        {{ 'Удалить из избранного' if channel.is_favorite else 'Добавить в избранное' }}
+                    </button>
+                    <button onclick="enableChannel('{{ channel.chat_id }}')"
+                            class="telegram-button telegram-button-green flex items-center {% if channel.download_enabled %} opacity-50 cursor-not-allowed {% endif %}"
+                            {% if channel.download_enabled %} disabled {% endif %}>
+                        <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                        Включить
+                    </button>
+                    <button onclick="disableChannel('{{ channel.chat_id }}')"
+                            class="telegram-button telegram-button-red flex items-center {% if not channel.download_enabled %} opacity-50 cursor-not-allowed {% endif %}"
+                            {% if not channel.download_enabled %} disabled {% endif %}>
+                        <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                        Отключить
+                    </button>
+                    <button onclick="showRemoveConfirmation('{{ channel.chat_id }}')"
+                            class="telegram-button telegram-button-gray flex items-center">
+                        <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                        Удалить
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="telegram-channel-empty">Каналы не найдены. Добавьте чат вручную или попробуйте сканировать.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Управление ботом -->
+    <div class="telegram-section">
+        <h2>Управление ботом</h2>
+        <div class="telegram-bot-controls">
+            <button onclick="startBot()" id="startBotBtn" class="telegram-button telegram-button-yellow flex items-center {% if bot_started %} opacity-50 cursor-not-allowed {% endif %}" {% if bot_started %} disabled {% endif %}>
+                <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                Запустить бот
+            </button>
+            <button onclick="stopBot()" id="stopBotBtn" class="telegram-button telegram-button-red flex items-center {% if not bot_started %} opacity-50 cursor-not-allowed {% endif %}" {% if not bot_started %} disabled {% endif %}>
+                <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                Остановить бот
+            </button>
+            <button onclick="restartBot()" id="restartBotBtn" class="telegram-button telegram-button-blue flex items-center {% if not bot_started %} opacity-50 cursor-not-allowed {% endif %}" {% if not bot_started %} disabled {% endif %}>
+                <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                Перезапустить бот
+            </button>
+        </div>
+        <div class="bot-status" id="botStatus">Статус: Остановлен</div>
+        <div class="console" id="botConsole"></div>
+    </div>
+
+    <!-- Модальное окно для ошибок -->
+    <div id="errorModal" class="telegram-modal hidden">
+        <div class="telegram-modal-content">
+            <h3>Ошибка</h3>
+            <p id="errorMessage" class="telegram-modal-error"></p>
+            <button onclick="closeModal()" class="telegram-button telegram-button-blue">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно для подтверждения удаления -->
+    <div id="removeConfirmationModal" class="telegram-modal hidden">
+        <div class="telegram-modal-content">
+            <h3>Подтверждение удаления</h3>
+            <p>Вы уверены, что хотите удалить чат <span id="removeChatId"></span>?</p>
+            <button id="confirmRemoveBtn" class="telegram-button telegram-button-red">Удалить</button>
+            <button onclick="closeRemoveConfirmation()" class="telegram-button telegram-button-blue">Отмена</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let isScanCooldown = false;
+    let chatIdToRemove = null;
+
+    function enableButtons() {
+        const stopBtn = document.getElementById('stopBotBtn');
+        const restartBtn = document.getElementById('restartBotBtn');
+        const startBtn = document.getElementById('startBotBtn');
+        const scanBtn = document.getElementById('scanChannelsBtn');
+        stopBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        stopBtn.disabled = false;
+        restartBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        restartBtn.disabled = false;
+        startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        startBtn.disabled = true;
+        scanBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        scanBtn.disabled = false;
+        document.getElementById('botStatus').textContent = 'Статус: Запущен';
+        document.getElementById('botStatus').className = 'bot-status status-running';
+    }
+
+    function disableButtons() {
+        const stopBtn = document.getElementById('stopBotBtn');
+        const restartBtn = document.getElementById('restartBotBtn');
+        const startBtn = document.getElementById('startBotBtn');
+        const scanBtn = document.getElementById('scanChannelsBtn');
+        stopBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        stopBtn.disabled = true;
+        restartBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        restartBtn.disabled = true;
+        startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        startBtn.disabled = false;
+        scanBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        scanBtn.disabled = true;
+        document.getElementById('botStatus').textContent = 'Статус: Остановлен';
+        document.getElementById('botStatus').className = 'bot-status status-stopped';
+    }
+
+    function appendToConsole(type, message) {
+        const consoleDiv = document.getElementById('botConsole');
+        const logLine = document.createElement('p');
+        logLine.textContent = message;
+        if (type === 'error') {
+            logLine.className = 'error';
+        }
+        consoleDiv.appendChild(logLine);
+        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
+    function pollLogs() {
+        fetch('/telegram-bot/logs')
+            .then(response => response.json())
+            .then(data => {
+                data.logs.forEach(log => appendToConsole(log.type, log.message));
+            })
+            .catch(error => appendToConsole('error', 'Ошибка получения логов: ' + error.message));
+        setTimeout(pollLogs, 5000);
+    }
+
+    function checkBotStatus(callback) {
+        fetch('/telegram-bot/status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.running) {
+                    enableButtons();
+                    callback(true);
+                } else {
+                    disableButtons();
+                    document.getElementById('botStatus').textContent = 'Статус: Ошибка';
+                    document.getElementById('botStatus').className = 'bot-status status-error';
+                    callback(false);
+                }
+            })
+            .catch(error => {
+                disableButtons();
+                appendToConsole('error', 'Ошибка проверки статуса бота: ' + error.message);
+                document.getElementById('botStatus').textContent = 'Статус: Ошибка';
+                document.getElementById('botStatus').className = 'bot-status status-error';
+                callback(false);
+            });
+    }
+
+    function startBot() {
+        const button = document.querySelector('button[onclick="startBot()"]');
+        const spinner = button.querySelector('.spinner');
+        button.disabled = true;
+        spinner.classList.remove('hidden');
+        appendToConsole('info', 'Запуск бота...');
+        fetch('/telegram-bot/start-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            appendToConsole('info', `Ответ сервера: ${data.message} (PID: ${data.pid || 'неизвестно'})`);
+            if (data.status === 'success') {
+                setTimeout(() => {
+                    checkBotStatus((isRunning) => {
+                        if (!isRunning) {
+                            showError('Бот не запустился. Проверьте логи в консоли.');
+                        }
+                    });
+                }, 2000);
+            } else {
+                appendToConsole('error', data.message);
+                showError(data.message);
+            }
+        })
+        .catch(error => {
+            appendToConsole('error', 'Ошибка при запуске бота: ' + error.message);
+            showError('Ошибка при запуске бота: ' + error.message);
+        })
+        .finally(() => {
+            button.disabled = false;
+            spinner.classList.add('hidden');
+        });
+    }
+
+    function stopBot() {
+        const button = document.querySelector('button[onclick="stopBot()"]');
+        const spinner = button.querySelector('.spinner');
+        button.disabled = true;
+        spinner.classList.remove('hidden');
+        appendToConsole('info', 'Остановка бота...');
+        fetch('/telegram-bot/stop-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            appendToConsole('info', `Ответ сервера: ${data.message}`);
+            if (data.status === 'success') {
+                disableButtons();
+                alert(data.message);
+            } else {
+                appendToConsole('error', data.message);
+                showError(data.message);
+            }
+        })
+        .catch(error => {
+            appendToConsole('error', 'Ошибка при остановке бота: ' + error.message);
+            showError('Ошибка при остановке бота: ' + error.message);
+        })
+        .finally(() => {
+            button.disabled = false;
+            spinner.classList.add('hidden');
+        });
+    }
+
+    function restartBot() {
+        const button = document.querySelector('button[onclick="restartBot()"]');
+        const spinner = button.querySelector('.spinner');
+        button.disabled = true;
+        spinner.classList.remove('hidden');
+        appendToConsole('info', 'Перезапуск бота...');
+        fetch('/telegram-bot/restart-bot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            appendToConsole('info', `Ответ сервера: ${data.message} (PID: ${data.pid || 'неизвестно'})`);
+            if (data.status === 'success') {
+                setTimeout(() => {
+                    checkBotStatus((isRunning) => {
+                        if (!isRunning) {
+                            showError('Бот не перезапустился. Проверьте логи в консоли.');
+                        }
+                    });
+                }, 2000);
+            } else {
+                appendToConsole('error', data.message);
+                showError(data.message);
+            }
+        })
+        .catch(error => {
+            appendToConsole('error', 'Ошибка при перезапуске бота: ' + error.message);
+            showError('Ошибка при перезапуске бота: ' + error.message);
+        })
+        .finally(() => {
+            button.disabled = false;
+            spinner.classList.add('hidden');
+        });
+    }
+
+    function scanChannels() {
+        if (isScanCooldown) {
+            appendToConsole('info', 'Сканирование уже выполняется или ожидает завершения времени ожидания.');
+            return;
+        }
+
+        const button = document.getElementById('scanChannelsBtn');
+        const spinner = button.querySelector('.spinner');
+        spinner.classList.remove('hidden');
+        button.disabled = true;
+        isScanCooldown = true;
+        appendToConsole('info', 'Сканирование каналов...');
+        fetch('/telegram-bot/scan-channels', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            appendToConsole('info', `Ответ сервера: ${data.message}`);
+            if (data.status === 'success') {
+                updateChannelList(data.channels);
+                alert(data.message);
+            } else {
+                appendToConsole('error', data.message);
+                showError(data.message);
+            }
+        })
+        .catch(error => {
+            appendToConsole('error', 'Ошибка при сканировании каналов: ' + error.message);
+            showError('Ошибка при сканировании каналов: ' + error.message);
+        })
+        .finally(() => {
+            spinner.classList.add('hidden');
+            button.disabled = false;
+            setTimeout(() => {
+                isScanCooldown = false;
+            }, 60000);
+        });
+    }
+
+    function addChat() {
+        const chatIdInput = document.getElementById('chatIdInput');
+        const chatTitleInput = document.getElementById('chatTitleInput');
+        const downloadEnabledInput = document.getElementById('downloadEnabledInput');
+        const chatId = chatIdInput.value.trim();
+        const title = chatTitleInput.value.trim();
+        const downloadEnabled = downloadEnabledInput.checked;
+
+        if (!chatId || !title) {
+            showError('Пожалуйста, введите chat_id и название чата.');
+            return;
+        }
+
+        const button = document.querySelector('button[onclick="addChat()"]');
+        const spinner = button.querySelector('.spinner');
+        spinner.classList.remove('hidden');
+        button.disabled = true;
+        appendToConsole('info', `Добавление чата ${chatId} (${title})...`);
+
+        fetch('/telegram-bot/add-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `chat_id=${encodeURIComponent(chatId)}&title=${encodeURIComponent(title)}&download_enabled=${downloadEnabled}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            appendToConsole('info', `Ответ сервера: ${data.message}`);
+            if (data.status === 'success') {
+                const channelList = document.getElementById('channelList');
+                const channelDiv = document.createElement('div');
+                channelDiv.className = `telegram-channel-item ${data.chat.is_favorite ? 'favorite' : ''}`;
+                channelDiv.id = `chat-${data.chat.chat_id}`;
+                channelDiv.innerHTML = `
+                    <div class="telegram-channel-details">
+                        <p class="telegram-channel-info">
+                            ID: ${data.chat.chat_id} | Название:
+                            <span id="titleDisplay-${data.chat.chat_id}">${data.chat.title}</span>
+                            <input type="text" id="titleInput-${data.chat.chat_id}" class="edit-title-input hidden" value="${data.chat.title}" />
+                            <button onclick="editTitle('${data.chat.chat_id}')" id="editBtn-${data.chat.chat_id}" class="telegram-button telegram-button-blue" style="padding: 2px 8px; font-size: 12px;">Изменить</button>
+                            <button onclick="saveTitle('${data.chat.chat_id}')" id="saveBtn-${data.chat.chat_id}" class="telegram-button telegram-button-green hidden" style="padding: 2px 8px; font-size: 12px;">Сохранить</button>
+                        </p>
+                        <p class="telegram-channel-info">Скачивание: <span id="downloadStatus-${data.chat.chat_id}" class="telegram-channel-status">${data.chat.download_enabled ? 'Включено' : 'Отключено'}</span></p>
+                        <p class="telegram-channel-info">Избранное: <span id="favoriteStatus-${data.chat.chat_id}">${data.chat.is_favorite ? 'Да' : 'Нет'}</span></p>
+                    </div>
+                    <div class="telegram-channel-actions">
+                        <button onclick="toggleFavorite('${data.chat.chat_id}', '${data.chat.is_favorite ? "remove" : "add"}')"
+                                class="telegram-button telegram-button-purple flex items-center"
+                                id="favoriteBtn-${data.chat.chat_id}">
+                            <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                            ${data.chat.is_favorite ? 'Удалить из избранного' : 'Добавить в избранное'}
+                        </button>
+                        <button onclick="enableChannel('${data.chat.chat_id}')"
+                                class="telegram-button telegram-button-green flex items-center ${data.chat.download_enabled ? 'opacity-50 cursor-not-allowed' : ''}"
+                                ${data.chat.download_enabled ? 'disabled' : ''}>
+                            <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                            Включить
+                        </button>
+                        <button onclick="disableChannel('${data.chat.chat_id}')"
+                                class="telegram-button telegram-button-red flex items-center ${!data.chat.download_enabled ? 'opacity-50 cursor-not-allowed' : ''}"
+                                ${!data.chat.download_enabled ? 'disabled' : ''}>
+                            <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                            Отключить
+                        </button>
+                        <button onclick="showRemoveConfirmation('${data.chat.chat_id}')"
+                                class="telegram-button telegram-button-gray flex items-center">
+                            <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                            Удалить
+                        </button>
+                    </div>
+                `;
+                channelList.appendChild(channelDiv);
+                chatIdInput.value = '';
+                chatTitleInput.value = '';
+                downloadEnabledInput.checked = false;
+                alert(data.message);
+            } else {
+                appendToConsole('error', data.message);
+                showError(data.message);
+            }
+        })
+        .catch(error => {
+            appendToConsole('error', 'Ошибка при добавлении чата: ' + error.message);
+            showError('Ошибка при добавлении чата: ' + error.message);
+        })
+        .finally(() => {
+            spinner.classList.add('hidden');
+            button.disabled = false;
+        });
+    }
+
+    function editTitle(chatId) {
+        const titleDisplay = document.getElementById(`titleDisplay-${chatId}`);
+        const titleInput = document.getElementById(`titleInput-${chatId}`);
+        const editBtn = document.getElementById(`editBtn-${chatId}`);
+        const saveBtn = document.getElementById(`saveBtn-${chatId}`);
+
+        titleDisplay.classList.add('hidden');
+        titleInput.classList.remove('hidden');
+        editBtn.classList.add('hidden');
+        saveBtn.classList.remove('hidden');
+        titleInput.focus();
+    }
+
+    function saveTitle(chatId) {
+        const titleInput = document.getElementById(`titleInput-${chatId}`);
+        const newTitle = titleInput.value.trim();
+        if (!newTitle) {
+            showError('Название чата не может быть пустым.');
+            return;
+        }
+
+        const titleDisplay = document.getElementById(`titleDisplay-${chatId}`);
+        const editBtn = document.getElementById(`editBtn-${chatId}`);
+        const saveBtn = document.getElementById(`saveBtn-${chatId}`);
+
+        appendToConsole('info', `Обновление названия чата ${chatId}...`);
+        fetch('/telegram-bot/update-chat-title', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `chat_id=${encodeURIComponent(chatId)}&title=${encodeURIComponent(newTitle)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            appendToConsole('info', `Ответ сервера: ${data.message}`);
+            if (data.status === 'success') {
+                titleDisplay.textContent = newTitle;
+                titleDisplay.classList.remove('hidden');
+                titleInput.classList.add('hidden');
+                editBtn.classList.remove('hidden');
+                saveBtn.classList.add('hidden');
+                alert(data.message);
+            } else {
+                appendToConsole('error', data.message);
+                showError(data.message);
+            }
+        })
+        .catch(error => {
+            appendToConsole('error', 'Ошибка при обновлении названия чата: ' + error.message);
+            showError('Ошибка при обновлении названия чата: ' + error.message);
+        });
+    }
+
+    function showRemoveConfirmation(chatId) {
+        chatIdToRemove = chatId;
+        const modal = document.getElementById('removeConfirmationModal');
+        const chatIdSpan = document.getElementById('removeChatId');
+        chatIdSpan.textContent = chatId;
+        modal.classList.remove('hidden');
+
+        const confirmBtn = document.getElementById('confirmRemoveBtn');
+        confirmBtn.onclick = () => removeChat(chatId);
+    }
+
+    function closeRemoveConfirmation() {
+        const modal = document.getElementById('removeConfirmationModal');
+        modal.classList.add('hidden');
+        chatIdToRemove = null;
+    }
+
+    function removeChat(chatId) {
+        const button = document.querySelector(`button[onclick="showRemoveConfirmation('${chatId}')"]`);
+        const spinner = button.querySelector('.spinner');
+        spinner.classList.remove('hidden');
+        button.disabled = true;
+        appendToConsole('info', `Удаление чата ${chatId}...`);
+
+        fetch('/telegram-bot/remove-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `chat_id=${encodeURIComponent(chatId)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            appendToConsole('info', `Ответ сервера: ${data.message}`);
+            if (data.status === 'success') {
+                const chatDiv = document.getElementById(`chat-${chatId}`);
+                if (chatDiv) {
+                    chatDiv.remove();
+                }
+                closeRemoveConfirmation();
+                alert(data.message);
+            } else {
+                appendToConsole('error', data.message);
+                showError(data.message);
+            }
+        })
+        .catch(error => {
+            appendToConsole('error', 'Ошибка при удалении чата: ' + error.message);
+            showError('Ошибка при удалении чата: ' + error.message);
+        })
+        .finally(() => {
+            spinner.classList.add('hidden');
+            button.disabled = false;
+        });
+    }
+
+    function enableChannel(channelId) {
+        const button = document.querySelector(`button[onclick="enableChannel('${channelId}')"]`);
+        const spinner = button.querySelector('.spinner');
+        spinner.classList.remove('hidden');
+        button.disabled = true;
+        appendToConsole('info', `Включение скачивания для чата ${channelId}...`);
+        fetch('/telegram-bot/toggle-download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=start&chat_id=${encodeURIComponent(channelId)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            appendToConsole('info', `Ответ сервера: ${data.message}`);
+            if (data.status === 'success') {
+                document.getElementById(`downloadStatus-${channelId}`).textContent = 'Включено';
+                button.classList.add('opacity-50', 'cursor-not-allowed');
+                button.disabled = true;
+                const disableButton = document.querySelector(`button[onclick="disableChannel('${channelId}')"]`);
+                disableButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                disableButton.disabled = false;
+            } else {
+                appendToConsole('error', data.message);
+                showError(data.message);
+            }
+        })
+        .catch(error => {
+            appendToConsole('error', 'Ошибка при включении скачивания: ' + error.message);
+            showError('Ошибка при включении скачивания: ' + error.message);
+        })
+        .finally(() => {
+            spinner.classList.add('hidden');
+            button.disabled = false;
+        });
+    }
+
+    function disableChannel(channelId) {
+        const button = document.querySelector(`button[onclick="disableChannel('${channelId}')"]`);
+        const spinner = button.querySelector('.spinner');
+        spinner.classList.remove('hidden');
+        button.disabled = true;
+        appendToConsole('info', `Отключение скачивания для чата ${channelId}...`);
+        fetch('/telegram-bot/toggle-download', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=stop&chat_id=${encodeURIComponent(channelId)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            appendToConsole('info', `Ответ сервера: ${data.message}`);
+            if (data.status === 'success') {
+                document.getElementById(`downloadStatus-${channelId}`).textContent = 'Отключено';
+                button.classList.add('opacity-50', 'cursor-not-allowed');
+                button.disabled = true;
+                const enableButton = document.querySelector(`button[onclick="enableChannel('${channelId}')"]`);
+                enableButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                enableButton.disabled = false;
+            } else {
+                appendToConsole('error', data.message);
+                showError(data.message);
+            }
+        })
+        .catch(error => {
+            appendToConsole('error', 'Ошибка при отключении скачивания: ' + error.message);
+            showError('Ошибка при отключении скачивания: ' + error.message);
+        })
+        .finally(() => {
+            spinner.classList.add('hidden');
+            button.disabled = false;
+        });
+    }
+
+    function toggleFavorite(channelId, action) {
+        const button = document.getElementById(`favoriteBtn-${channelId}`);
+        const spinner = button.querySelector('.spinner');
+        spinner.classList.remove('hidden');
+        button.disabled = true;
+        appendToConsole('info', `${action === 'add' ? 'Добавление' : 'Удаление'} чата ${channelId} в избранное...`);
+        fetch('/telegram-bot/toggle-favorite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `action=${action}&chat_id=${encodeURIComponent(channelId)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            appendToConsole('info', `Ответ сервера: ${data.message}`);
+            if (data.status === 'success') {
+                document.getElementById(`favoriteStatus-${channelId}`).textContent = data.is_favorite ? 'Да' : 'Нет';
+                button.textContent = data.is_favorite ? 'Удалить из избранного' : 'Добавить в избранное';
+                button.setAttribute('onclick', `toggleFavorite('${channelId}', '${data.is_favorite ? "remove" : "add"}')`);
+                const channelDiv = document.querySelector(`#channelList .telegram-channel-item:has(#favoriteStatus-${channelId})`);
+                if (data.is_favorite) {
+                    channelDiv.classList.add('favorite');
+                    document.getElementById(`downloadStatus-${channelId}`).textContent = 'Включено';
+                    document.querySelector(`button[onclick="enableChannel('${channelId}')"]`).classList.add('opacity-50', 'cursor-not-allowed');
+                    document.querySelector(`button[onclick="enableChannel('${channelId}')"]`).disabled = true;
+                    document.querySelector(`button[onclick="disableChannel('${channelId}')"]`).classList.remove('opacity-50', 'cursor-not-allowed');
+                    document.querySelector(`button[onclick="disableChannel('${channelId}')"]`).disabled = false;
+                } else {
+                    channelDiv.classList.remove('favorite');
+                }
+            } else {
+                appendToConsole('error', data.message);
+                showError(data.message);
+            }
+        })
+        .catch(error => {
+            appendToConsole('error', 'Ошибка при управлении избранным: ' + error.message);
+            showError('Ошибка при управлении избранным: ' + error.message);
+        })
+        .finally(() => {
+            spinner.classList.add('hidden');
+            button.disabled = false;
+        });
+    }
+
+    function showError(message) {
+        const modal = document.getElementById('errorModal');
+        const errorMessage = document.getElementById('errorMessage');
+        errorMessage.textContent = message;
+        modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('errorModal');
+        modal.classList.add('hidden');
+    }
+
+    function updateChannelList(channels) {
+        const channelList = document.getElementById('channelList');
+        channelList.innerHTML = '';
+        if (channels.length === 0) {
+            channelList.innerHTML = '<p class="telegram-channel-empty">Каналы не найдены. Добавьте чат вручную или попробуйте сканировать.</p>';
+            return;
+        }
+        channels.forEach(channel => {
+            const channelDiv = document.createElement('div');
+            channelDiv.className = `telegram-channel-item ${channel.is_favorite ? 'favorite' : ''}`;
+            channelDiv.id = `chat-${channel.chat_id}`;
+            channelDiv.innerHTML = `
+                <div class="telegram-channel-details">
+                    <p class="telegram-channel-info">
+                        ID: ${channel.chat_id} | Название:
+                        <span id="titleDisplay-${channel.chat_id}">${channel.title}</span>
+                        <input type="text" id="titleInput-${channel.chat_id}" class="edit-title-input hidden" value="${channel.title}" />
+                        <button onclick="editTitle('${channel.chat_id}')" id="editBtn-${channel.chat_id}" class="telegram-button telegram-button-blue" style="padding: 2px 8px; font-size: 12px;">Изменить</button>
+                        <button onclick="saveTitle('${channel.chat_id}')" id="saveBtn-${channel.chat_id}" class="telegram-button telegram-button-green hidden" style="padding: 2px 8px; font-size: 12px;">Сохранить</button>
+                    </p>
+                    <p class="telegram-channel-info">Скачивание: <span id="downloadStatus-${channel.chat_id}" class="telegram-channel-status">${channel.download_enabled ? 'Включено' : 'Отключено'}</span></p>
+                    <p class="telegram-channel-info">Избранное: <span id="favoriteStatus-${channel.chat_id}">${channel.is_favorite ? 'Да' : 'Нет'}</span></p>
+                </div>
+                <div class="telegram-channel-actions">
+                    <button onclick="toggleFavorite('${channel.chat_id}', '${channel.is_favorite ? "remove" : "add"}')"
+                            class="telegram-button telegram-button-purple flex items-center"
+                            id="favoriteBtn-${channel.chat_id}">
+                        <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                        ${channel.is_favorite ? 'Удалить из избранного' : 'Добавить в избранное'}
+                    </button>
+                    <button onclick="enableChannel('${channel.chat_id}')"
+                            class="telegram-button telegram-button-green flex items-center ${channel.download_enabled ? 'opacity-50 cursor-not-allowed' : ''}"
+                            ${channel.download_enabled ? 'disabled' : ''}>
+                        <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                        Включить
+                    </button>
+                    <button onclick="disableChannel('${channel.chat_id}')"
+                            class="telegram-button telegram-button-red flex items-center ${!channel.download_enabled ? 'opacity-50 cursor-not-allowed' : ''}"
+                            ${!channel.download_enabled ? 'disabled' : ''}>
+                        <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                        Отключить
+                    </button>
+                    <button onclick="showRemoveConfirmation('${channel.chat_id}')"
+                            class="telegram-button telegram-button-gray flex items-center">
+                        <span class="spinner hidden mr-2 animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></span>
+                        Удалить
+                    </button>
+                </div>
+            `;
+            channelList.appendChild(channelDiv);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        pollLogs();
+    });
+</script>
+{% endblock %}

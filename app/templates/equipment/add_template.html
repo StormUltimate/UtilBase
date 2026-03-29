@@ -1,25 +1,29 @@
-<!-- Path: app/templates/equipment/add_template.html -->
 {% extends "base.html" %}
 {% block title %}Добавить шаблон{% endblock %}
 
-{% block tabs %}
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('equipment.list_equipment') }}">Общий список</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('equipment.templates_list') }}">Шаблоны</a>
-    </li>
-    <li class="nav-item active">
-        <a class="nav-link" href="{{ url_for('equipment.add_template') }}">Добавить шаблон</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('equipment.hierarchy') }}">Иерархия</a>
-    </li>
-{% endblock %}
+{% block tabs %}{% endblock %}
 
 {% block content %}
 
-    <h2>Добавить шаблон</h2>
+    <div class="mb-3">
+        <a href="{{ url_for('equipment.templates_list') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Назад
+        </a>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Добавить шаблон оборудования</h2>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('equipment.checklist_templates_list') }}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-ui-checks"></i> Шаблоны чек-листов
+            </a>
+            <a href="{{ url_for('equipment.import_templates') }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-upload"></i> Импорт
+            </a>
+            <a href="{{ url_for('equipment.templates_export') }}" class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Экспорт
+            </a>
+        </div>
+    </div>
 
     <form method="POST" enctype="multipart/form-data">
         {{ form.hidden_tag() }}

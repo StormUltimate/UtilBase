@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Редактировать шаблон{% endblock %}
+
+{% block tabs %}{% endblock %}
+
+{% block content %}
+
+    <div class="mb-3">
+        <a href="{{ url_for('equipment.templates_list') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Назад
+        </a>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Редактировать шаблон оборудования #{{ template.id }}</h2>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('equipment.add_template') }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-plus-circle"></i> Новый шаблон
+            </a>
+            <a href="{{ url_for('equipment.checklist_templates_list', equipment_type=template.type or '') }}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-ui-checks"></i> Чек-лист(ы) по типу
+            </a>
+            <a href="{{ url_for('equipment.templates_export') }}" class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Экспорт
+            </a>
+        </div>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.type.label }} {{ form.type(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.kind.label }} {{ form.kind(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.brand.label }} {{ form.brand(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.model.label }} {{ form.model(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.power.label }} {{ form.power(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.depth.label }} {{ form.depth(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.height.label }} {{ form.height(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.width.label }} {{ form.width(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.installation_type.label }} {{ form.installation_type(class="form-select") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.production_year.label }} {{ form.production_year(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.service_interval.label }} {{ form.service_interval(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.service_life.label }} {{ form.service_life(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.service_price.label }} {{ form.service_price(class="form-control") }}
+        </div>
+
+        <div class="form-group">
+            {{ form.photo_path.label }} {{ form.photo_path(class="form-control") }}
+        </div>
+        {% if template.photo_path %}
+        <small class="text-muted d-block mb-2">Текущий файл: {{ template.photo_path }}</small>
+        {% endif %}
+
+        <div class="form-group">
+            {{ form.document_path.label }} {{ form.document_path(class="form-control") }}
+        </div>
+        {% if template.document_path %}
+        <small class="text-muted d-block mb-2">Текущий файл: {{ template.document_path }}</small>
+        {% endif %}
+
+        {{ form.submit(class="btn btn-primary", value="Сохранить изменения") }}
+    </form>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+            {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+{% endblock %}

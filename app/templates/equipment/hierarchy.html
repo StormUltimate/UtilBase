@@ -1,13 +1,10 @@
-<!--# Path: app/templates/equipment/hierarchy.html-->
-
 {% extends "base.html" %}
 {% block title %}Иерархия оборудования{% if client %} клиента #{{ client.id }}{% endif %}{% endblock %}
 
 {% block tabs %}
     {% if client %}
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('clients.client_detail', id=client.id) }}">Карточка клиента</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('clients.client_detail', client_id=client.id) }}">Карточка клиента</a></li>
         <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.client_passport', client_id=client.id) }}">Паспортизация</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.client_equipment_list', client_id=client.id) }}">Список оборудования</a></li>
         <li class="nav-item"><a class="nav-link active" href="{{ url_for('equipment.client_hierarchy', client_id=client.id) }}">Иерархия</a></li>
     {% else %}
         <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.list_equipment') }}">Общий список</a></li>
@@ -39,7 +36,7 @@
                     <td>{{ e.brand or 'Не указано' }}</td>
                     <td>{{ e.model or 'Не указано' }}</td>
                     <td>
-                        <a href="{{ url_for('equipment.edit_equipment', id=e.id) }}" class="btn btn-sm btn-warning">Редактировать</a>
+                        <a href="{{ url_for('equipment.edit_equipment', id=e.id, next=request.full_path) }}" class="btn btn-sm btn-warning">Редактировать</a>
                         <form method="POST" action="{{ url_for('equipment.delete_equipment', id=e.id) }}" style="display:inline;">
                             <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Вы уверены?');">Удалить</button>
                         </form>

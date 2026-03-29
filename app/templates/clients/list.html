@@ -20,22 +20,32 @@
     </h2>
 
     <form method="get" class="mb-4">
-        <div class="row g-2">
+        <div class="row g-2 align-items-end">
             <div class="col-md-5">
-                <input type="text" name="search" class="form-control" placeholder="Поиск по ФИО, адресу или телефону" value="{{ search_term }}">
+                <label class="form-label small mb-1">Поиск по ФИО, адресу или телефону</label>
+                <input type="text" name="search" class="form-control" placeholder="Одинаково с фильтром заявок" value="{{ search_term }}">
             </div>
-            <div class="col-md-3">
-                <select name="counterparty_filter" class="form-select">
-                    {% for cp in counterparties %}
-                        <option value="{{ cp }}" {% if counterparty_filter == cp %}selected{% endif %}>{{ cp or 'Не указано' }}</option>
-                    {% endfor %}
+            <div class="col-md-4">
+                <label class="form-label small mb-1">Вид клиента</label>
+                <select name="client_kind" class="form-select">
+                    <option value="">Все</option>
+                    <option value="__none__" {% if client_kind_filter == '__none__' %}selected{% endif %}>Без вида</option>
+                    <option value="individual" {% if client_kind_filter == 'individual' %}selected{% endif %}>Физ. лицо</option>
+                    <option value="legal_entity" {% if client_kind_filter == 'legal_entity' %}selected{% endif %}>Юр. лицо</option>
+                    <option value="commercial_household" {% if client_kind_filter == 'commercial_household' %}selected{% endif %}>Комбыт</option>
+                    <option value="government" {% if client_kind_filter == 'government' %}selected{% endif %}>Госучреждение</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-md-3">
                 <button type="submit" class="btn btn-primary w-100">Поиск</button>
             </div>
         </div>
     </form>
+
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="badge bg-secondary">Всего: {{ total_clients }}</span>
+        <span class="badge bg-primary">По фильтру: {{ filtered_clients }}</span>
+    </div>
 
     <div class="mb-4 d-flex gap-2">
         <a href="{{ url_for('clients.export') }}" class="btn btn-success">Экспорт Excel</a>
@@ -47,7 +57,7 @@
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Контрагент</th>
+                <th>Вид клиента</th>
                 <th>ФИО</th>
                 <th>Адрес</th>
                 <th>Телефон</th>
@@ -59,7 +69,13 @@
             {% for client in clients %}
             <tr>
                 <td>{{ client.id }}</td>
-                <td>{{ client.counterparty or 'Не указано' }}</td>
+                <td>
+                    {% if client.client_kind == 'individual' %}Физ. лицо
+                    {% elif client.client_kind == 'legal_entity' %}Юр. лицо
+                    {% elif client.client_kind == 'commercial_household' %}Комбыт
+                    {% elif client.client_kind == 'government' %}Госучреждение
+                    {% elif client.counterparty %}{{ client.counterparty }}{% else %}—{% endif %}
+                </td>
                 <td>{{ client.full_name or 'Не указано' }}</td>
                 <td>{{ client.address or 'Не указано' }}</td>
                 <td>{{ client.phone or 'Не указано' }}</td>
@@ -67,7 +83,7 @@
                 <td>
                     <div class="btn-group btn-group-sm" role="group">
                         <a href="{{ url_for('clients.client_detail', client_id=client.id) }}" class="btn btn-primary">Подробно</a>
-                        <a href="{{ url_for('clients.edit_client', client_id=client.id) }}" class="btn btn-outline-primary">Редактировать</a>
+                        <a href="{{ url_for('clients.edit_client', client_id=client.id, next=request.full_path) }}" class="btn btn-outline-primary">Редактировать</a>
                         <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#mapModal"
                                 data-id="{{ client.id }}" data-lat="{{ client.latitude }}" data-long="{{ client.longitude }}"
                                 data-name="{{ client.full_name }}" data-address="{{ client.address }}">На карте</button>
@@ -118,6 +134,10 @@
                             <div class="col-md-6">
                                 {{ client_form.email.label(class="form-label") }}
                                 {{ client_form.email(class="form-control") }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ client_form.client_kind.label(class="form-label") }}
+                                {{ client_form.client_kind(class="form-select") }}
                             </div>
                         </div>
                     </div>

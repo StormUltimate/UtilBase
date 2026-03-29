@@ -1,4 +1,3 @@
-<!--Path: app/templates/photos/photos.html-->
 {% extends "base.html" %}
 {% block title %}Медиа{% endblock %}
 
@@ -16,13 +15,26 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="mb-0">Фото и медиа</h2>
     <div class="btn-group">
-        <a href="{{ url_for('photos.upload_photo') }}" class="btn btn-primary">
+        <a href="{{ url_for('photos.upload_photo', next=request.full_path) }}" class="btn btn-primary">
             <i class="bi bi-cloud-upload"></i> Загрузить
         </a>
-        <a href="{{ url_for('photos.import_chat') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('photos.import_chat', next=request.full_path) }}" class="btn btn-outline-secondary">
             <i class="bi bi-telegram"></i> Импорт чата
         </a>
     </div>
+</div>
+
+<div class="mb-2 d-flex flex-wrap gap-2">
+    <a href="{{ defects_url }}"
+       class="btn btn-sm {% if category == 'defect' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+        <i class="bi bi-exclamation-triangle"></i> Дефекты
+    </a>
+    {% if category %}
+    <a href="{{ clear_category_url }}"
+       class="btn btn-sm btn-outline-secondary">
+        Снять фильтр
+    </a>
+    {% endif %}
 </div>
 
 <div class="card mb-3">
@@ -51,34 +63,90 @@
                        value="{{ search_request or '' }}">
             </div>
             <div class="col-6 col-md-2">
-                <label class="form-label small mb-1">Описание</label>
+                <label class="form-label small mb-1">Описание / подпись</label>
                 <input type="text" name="description" class="form-control form-control-sm"
-                       placeholder="Текст в описании"
+                       placeholder="Как в Telegram"
                        value="{{ search_description or '' }}">
             </div>
-            <div class="col-6 col-md-1">
-                <label class="form-label small mb-1">В ряд</label>
-                <select name="per_row" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="3" {% if items_per_row == '3' %}selected{% endif %}>3</option>
-                    <option value="4" {% if items_per_row == '4' %}selected{% endif %}>4</option>
-                    <option value="6" {% if items_per_row == '6' %}selected{% endif %}>6</option>
+            <div class="col-12 col-md-3">
+                <label class="form-label small mb-1 d-block">Контекст (как в Telegram)</label>
+                <select name="caption_context" id="caption_context" class="form-select form-select-sm" title="Соседние медиа в том же чате">
+                    <option value="1" {% if caption_context %}selected{% endif %}>Соседние — да</option>
+                    <option value="0" {% if not caption_context %}selected{% endif %}>Соседние — нет</option>
                 </select>
             </div>
-            <div class="col-12 col-md-auto">
+            <div class="col-6 col-md-1">
+                <label class="form-label small mb-1" title="±N сообщений по id (если есть в базе)">± сообщ.</label>
+                <input type="number" name="neighbor_span" class="form-control form-control-sm" min="1" max="500"
+                       value="{{ neighbor_span }}" title="Для записей с номером сообщения Telegram">
+            </div>
+            <div class="col-6 col-md-1">
+                <label class="form-label small mb-1" title="Окно по времени, если id сообщения нет">± мин</label>
+                <input type="number" name="neighbor_minutes" class="form-control form-control-sm" min="1" max="1440"
+                       value="{{ neighbor_minutes }}">
+            </div>
+            <div class="col-12">
+                <div class="form-text small text-muted">
+                    Контекст по подписи: соседние кадры — <strong>тот же день</strong>, <strong>тот же автор</strong>, что у найденного по тексту (чтобы в общем чате не подмешивались фото коллег рядом по времени).
+                </div>
+            </div>
+            <div class="col-12 col-md-auto d-flex flex-wrap align-items-center gap-2">
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="bi bi-funnel"></i> Применить
                 </button>
                 <a href="{{ url_for('photos.photos_list') }}" class="btn btn-outline-secondary btn-sm">
                     Сбросить
                 </a>
+                <button type="button" class="btn btn-outline-warning btn-sm ms-1 ms-md-2" data-bs-toggle="modal" data-bs-target="#renameAuthorModal" title="Массовая замена автора в импортированных медиа">
+                    <i class="bi bi-person-lines-fill"></i> Переименовать авторов
+                </button>
             </div>
         </form>
     </div>
+
 </div>
 
-<div class="d-flex justify-content-between align-items-center mb-2">
+<div class="modal fade" id="renameAuthorModal" tabindex="-1" aria-labelledby="renameAuthorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="renameAuthorModalLabel">Переименование авторов</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <form method="post" action="{{ url_for('photos.rename_author') }}">
+                <div class="modal-body">
+                    <p class="form-text small text-muted mb-3">Массовая замена автора в уже импортированных медиа (файлы на диске не меняются).</p>
+                    <div class="mb-3">
+                        <label class="form-label small" for="rename_old_author">Старый ник/автор</label>
+                        <input type="text" name="old_author" id="rename_old_author" class="form-control form-control-sm" list="known-authors"
+                               placeholder="Например: @nickname" required autocomplete="off">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small" for="rename_new_author">Новое имя автора</label>
+                        <input type="text" name="new_author" id="rename_new_author" class="form-control form-control-sm"
+                               placeholder="Например: Иван Иванов" required autocomplete="off">
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="only_bot" id="rename_only_bot" value="1" checked>
+                        <label class="form-check-label small" for="rename_only_bot">Только Telegram</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-warning btn-sm">Переименовать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<datalist id="known-authors">
+    {% for a in author_names %}<option value="{{ a }}"></option>{% endfor %}
+</datalist>
+
+<div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
     <div class="text-muted small">
-        Найдено: {{ photos|length }} элементов
+        Найдено: {{ total_count }} · на странице {{ photos|length }} (стр. {{ page }} из {{ total_pages }})
     </div>
     <div class="btn-group btn-group-sm">
         <button type="button" class="btn btn-outline-secondary" id="select_all">
@@ -90,9 +158,25 @@
     </div>
 </div>
 
+{% if total_pages > 1 %}
+<nav class="mb-3" aria-label="Страницы">
+    <ul class="pagination pagination-sm flex-wrap mb-0 justify-content-center">
+        {% if page > 1 %}
+        <li class="page-item"><a class="page-link" href="{{ photos_page_url(1) }}">« Первая</a></li>
+        <li class="page-item"><a class="page-link" href="{{ photos_page_url(page - 1) }}">Пред.</a></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">{{ page }} / {{ total_pages }}</span></li>
+        {% if page < total_pages %}
+        <li class="page-item"><a class="page-link" href="{{ photos_page_url(page + 1) }}">След.</a></li>
+        <li class="page-item"><a class="page-link" href="{{ photos_page_url(total_pages) }}">Последняя »</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
 <div id="photo_grid" class="row g-3">
     {% for photo in photos %}
-    <div class="col-6 col-md-{{ 12 // (items_per_row|int if items_per_row|int > 0 else 4) }}">
+    <div class="col-6 col-md-2">
         <div class="card h-100 shadow-sm photo-item"
              data-index="{{ loop.index0 }}"
              data-id="{{ photo.id }}"
@@ -105,10 +189,19 @@
              data-date="{{ photo.upload_date.strftime('%d.%m.%Y %H:%M') if photo.upload_date else '' }}">
             <div class="position-relative">
                 <input type="checkbox" class="form-check-input position-absolute m-2 photo_checkbox" value="{{ photo.id }}" style="z-index: 2;">
+                <a href="{{ url_for('photos.edit_photo', photo_id=photo.id, next=request.full_path) }}"
+                   class="btn btn-primary btn-sm position-absolute top-0 end-0 m-1 py-0 px-1 shadow"
+                   style="z-index: 4; line-height: 1.2;"
+                   title="Редактировать привязку и описание"
+                   onclick="event.stopPropagation();">
+                    <i class="bi bi-pencil"></i>
+                </a>
                 {% if photo.file_type == 'photo' %}
                 <img src="{{ url_for('photos.view', id=photo.id) }}"
                      class="card-img-top"
                      alt="Фото"
+                     loading="lazy"
+                     decoding="async"
                      style="height: 160px; object-fit: cover; cursor: pointer;"
                      onclick="openGallery({{ loop.index0 }})">
                 {% elif photo.file_type == 'video' %}
@@ -166,6 +259,22 @@
     {% endfor %}
 </div>
 
+{% if total_pages > 1 %}
+<nav class="mt-3 mb-0" aria-label="Страницы внизу">
+    <ul class="pagination pagination-sm flex-wrap mb-0 justify-content-center">
+        {% if page > 1 %}
+        <li class="page-item"><a class="page-link" href="{{ photos_page_url(1) }}">« Первая</a></li>
+        <li class="page-item"><a class="page-link" href="{{ photos_page_url(page - 1) }}">Пред.</a></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">{{ page }} / {{ total_pages }}</span></li>
+        {% if page < total_pages %}
+        <li class="page-item"><a class="page-link" href="{{ photos_page_url(page + 1) }}">След.</a></li>
+        <li class="page-item"><a class="page-link" href="{{ photos_page_url(total_pages) }}">Последняя »</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
 {# Полноэкранная галерея #}
 <div id="mediaOverlay" class="media-overlay d-none">
     <div class="media-overlay-inner">
@@ -177,12 +286,17 @@
             <i class="bi bi-chevron-right"></i>
         </button>
         <div class="media-overlay-content">
-            <img id="overlayImage" class="media-overlay-image d-none" alt="Фото">
+            <div id="zoomViewport" class="media-overlay-zoom-viewport d-none">
+                <div id="zoomInner" class="media-overlay-zoom-inner">
+                    <img id="overlayImage" class="media-overlay-image" alt="Фото">
+                </div>
+            </div>
             <video id="overlayVideo" class="media-overlay-video d-none" controls></video>
         </div>
         <div class="media-overlay-caption text-light small">
             <div id="overlayMetaLine1"></div>
             <div id="overlayMetaLine2"></div>
+            <div id="overlayZoomHint" class="text-white-50 mt-1 d-none" style="font-size: 0.75rem;">Колёсико — масштаб · перетаскивание — сдвиг · двойной щелчок — сброс</div>
         </div>
     </div>
 </div>
@@ -206,6 +320,7 @@
     position: relative;
     width: 100%;
     height: 100%;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -213,13 +328,45 @@
     padding: 1rem;
 }
 .media-overlay-content {
-    max-width: 100%;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
     max-height: calc(100% - 80px);
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    z-index: 0;
 }
-.media-overlay-image,
+.media-overlay-zoom-viewport {
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    min-height: 200px;
+    position: relative;
+    touch-action: none;
+    cursor: grab;
+}
+.media-overlay-zoom-viewport.is-dragging {
+    cursor: grabbing;
+}
+.media-overlay-zoom-inner {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    will-change: transform;
+    transform-origin: center center;
+}
+.media-overlay-zoom-inner .media-overlay-image {
+    display: block;
+    max-width: min(100vw - 2rem, 100%);
+    max-height: calc(100vh - 6rem);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-drag: none;
+}
 .media-overlay-video {
     max-width: 100%;
     max-height: 100%;
@@ -229,12 +376,14 @@
     position: absolute;
     top: 1rem;
     right: 1.5rem;
+    z-index: 2;
 }
 .media-overlay-prev,
 .media-overlay-next {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
+    z-index: 2;
 }
 .media-overlay-prev { left: 1.5rem; }
 .media-overlay-next { right: 1.5rem; }
@@ -244,6 +393,7 @@
     left: 0;
     right: 0;
     text-align: center;
+    z-index: 2;
 }
 </style>
 {% endblock %}
@@ -254,6 +404,9 @@
     const overlay = document.getElementById('mediaOverlay');
     const overlayImg = document.getElementById('overlayImage');
     const overlayVideo = document.getElementById('overlayVideo');
+    const zoomViewport = document.getElementById('zoomViewport');
+    const zoomInner = document.getElementById('zoomInner');
+    const zoomHint = document.getElementById('overlayZoomHint');
     const meta1 = document.getElementById('overlayMetaLine1');
     const meta2 = document.getElementById('overlayMetaLine2');
     const btnPrev = overlay.querySelector('.media-overlay-prev');
@@ -263,6 +416,36 @@
 
     let items = Array.from(document.querySelectorAll('.photo-item'));
     let currentIndex = 0;
+    let scale = 1;
+    let tx = 0;
+    let ty = 0;
+    let drag = null;
+
+    function applyZoomTransform() {
+        if (!zoomInner) return;
+        zoomInner.style.transform = 'translate(-50%, -50%) translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')';
+    }
+
+    function clampPan() {
+        if (!zoomViewport || !overlayImg.complete || overlayImg.naturalWidth === 0) return;
+        const vw = zoomViewport.clientWidth;
+        const vh = zoomViewport.clientHeight;
+        const lw = overlayImg.offsetWidth;
+        const lh = overlayImg.offsetHeight;
+        const visualW = lw * scale;
+        const visualH = lh * scale;
+        const maxTx = Math.max(0, (visualW - vw) / 2);
+        const maxTy = Math.max(0, (visualH - vh) / 2);
+        tx = Math.max(-maxTx, Math.min(maxTx, tx));
+        ty = Math.max(-maxTy, Math.min(maxTy, ty));
+    }
+
+    function resetZoomPan() {
+        scale = 1;
+        tx = 0;
+        ty = 0;
+        applyZoomTransform();
+    }
 
     window.openGallery = function (index) {
         if (!items.length) return;
@@ -275,9 +458,11 @@
     function closeOverlay() {
         overlay.classList.add('d-none');
         document.body.classList.remove('overflow-hidden');
-        overlayImg.classList.add('d-none');
         overlayVideo.classList.add('d-none');
         overlayVideo.pause();
+        if (zoomViewport) zoomViewport.classList.add('d-none');
+        if (zoomHint) zoomHint.classList.add('d-none');
+        resetZoomPan();
     }
 
     function showCurrent() {
@@ -291,15 +476,31 @@
         const date = item.dataset.date || '';
         const request = item.dataset.request || '';
 
-        overlayImg.classList.add('d-none');
         overlayVideo.classList.add('d-none');
+        if (zoomViewport) zoomViewport.classList.add('d-none');
+        if (zoomHint) zoomHint.classList.add('d-none');
 
         if (type === 'video') {
             overlayVideo.src = src;
             overlayVideo.classList.remove('d-none');
+            resetZoomPan();
         } else {
+            if (zoomViewport) zoomViewport.classList.remove('d-none');
+            if (zoomHint) zoomHint.classList.remove('d-none');
             overlayImg.src = src;
-            overlayImg.classList.remove('d-none');
+            resetZoomPan();
+            function afterImgReady() {
+                clampPan();
+                applyZoomTransform();
+            }
+            if (overlayImg.complete) {
+                afterImgReady();
+            } else {
+                overlayImg.onload = function () {
+                    overlayImg.onload = null;
+                    afterImgReady();
+                };
+            }
         }
 
         meta1.textContent = [
@@ -328,6 +529,66 @@
     btnNext.addEventListener('click', next);
     btnPrev.addEventListener('click', prev);
     btnClose.addEventListener('click', closeOverlay);
+
+    if (zoomViewport && zoomInner) {
+        zoomViewport.addEventListener('wheel', function (e) {
+            if (overlay.classList.contains('d-none') || zoomViewport.classList.contains('d-none')) return;
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.12 : 0.89;
+            const prevScale = scale;
+            let newScale = Math.min(8, Math.max(1, scale * factor));
+            if (newScale === 1) {
+                tx = 0;
+                ty = 0;
+            } else {
+                const rect = zoomViewport.getBoundingClientRect();
+                const cx = rect.width / 2;
+                const cy = rect.height / 2;
+                const mx = e.clientX - rect.left;
+                const my = e.clientY - rect.top;
+                tx += (mx - cx) * (1 - newScale / prevScale);
+                ty += (my - cy) * (1 - newScale / prevScale);
+            }
+            scale = newScale;
+            clampPan();
+            applyZoomTransform();
+        }, { passive: false });
+
+        zoomViewport.addEventListener('mousedown', function (e) {
+            if (e.button !== 0) return;
+            if (scale <= 1) return;
+            e.preventDefault();
+            drag = { startX: e.clientX, startY: e.clientY, origTx: tx, origTy: ty };
+            zoomViewport.classList.add('is-dragging');
+        });
+
+        zoomViewport.addEventListener('dblclick', function (e) {
+            if (zoomViewport.classList.contains('d-none')) return;
+            e.preventDefault();
+            resetZoomPan();
+        });
+
+        document.addEventListener('mousemove', function (e) {
+            if (!drag) return;
+            tx = drag.origTx + (e.clientX - drag.startX);
+            ty = drag.origTy + (e.clientY - drag.startY);
+            clampPan();
+            applyZoomTransform();
+        });
+
+        document.addEventListener('mouseup', function () {
+            if (drag) {
+                drag = null;
+                zoomViewport.classList.remove('is-dragging');
+            }
+        });
+
+        window.addEventListener('resize', function () {
+            if (overlay.classList.contains('d-none') || zoomViewport.classList.contains('d-none')) return;
+            clampPan();
+            applyZoomTransform();
+        });
+    }
 
     overlay.addEventListener('click', function (e) {
         if (e.target === overlay) {

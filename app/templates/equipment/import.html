@@ -1,17 +1,23 @@
-<!--# Path: app/templates/equipment/import.html
-# New file: Форма импорта шаблонов (xlsx, столбцы как в модели).-->
 {% extends "base.html" %}
 {% block title %}Импорт шаблонов оборудования{% endblock %}
 
-{% block tabs %}
-     <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.list_equipment') }}">Общий список</a></li>
-    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.templates_list') }}">Шаблоны</a></li>
-    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.add_equipment') }}">Добавить оборудование</a></li>
-    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.hierarchy') }}">Иерархия</a></li>
-{% endblock %}
+{% block tabs %}{% endblock %}
 
 {% block content %}
-    <h2>Импорт шаблонов</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Импорт шаблонов</h2>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('equipment.templates_list') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Назад
+            </a>
+            <a href="{{ url_for('equipment.add_template') }}" class="btn btn-success btn-sm">
+                <i class="bi bi-plus-lg"></i> Добавить
+            </a>
+            <a href="{{ url_for('equipment.templates_export') }}" class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Экспорт
+            </a>
+        </div>
+    </div>
 
     <form method="POST" enctype="multipart/form-data">
         {{ form.hidden_tag() }}

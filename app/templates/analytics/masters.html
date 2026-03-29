@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Аналитика мастеров{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('requests.list_requests') }}">
+            <i class="bi bi-list-ul"></i> Заявки
+        </a>
+    </li>
+    <li class="nav-item">
+        <span class="nav-link active">
+            <i class="bi bi-bar-chart"></i> Аналитика
+        </span>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <nav aria-label="breadcrumb" class="mb-0">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="{{ url_for('requests.list_requests') }}">Заявки</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Аналитика мастеров</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label small mb-0">Период: с</label>
+                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ date_from }}">
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label small mb-0">по</label>
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to }}">
+            </div>
+            <div class="col-12 col-md-auto">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel"></i> Применить
+                </button>
+                <a href="{{ url_for('analytics.masters') }}" class="btn btn-outline-secondary btn-sm">
+                    Сбросить
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Суммарно в пути</div>
+                <div class="h5 mb-0">{{ totals.travel_human }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Суммарно в работе</div>
+                <div class="h5 mb-0">{{ totals.work_human }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Суммарно всего</div>
+                <div class="h5 mb-0">{{ totals.total_human }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Мастер</th>
+                <th class="text-end">Заявок в периоде</th>
+                <th class="text-end">В пути</th>
+                <th class="text-end">В работе</th>
+                <th class="text-end">Суммарно</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>{{ row.worker_name }}</td>
+                <td class="text-end">{{ row.requests_count }}</td>
+                <td class="text-end">{{ row.travel_human }}</td>
+                <td class="text-end">{{ row.work_human }}</td>
+                <td class="text-end"><strong>{{ row.total_human }}</strong></td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="text-center text-muted py-4">
+                    За выбранный период нет данных по режимам мастеров.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

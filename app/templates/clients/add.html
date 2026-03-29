@@ -36,6 +36,10 @@
             {{ form.email.label(class="form-label") }}
             {{ form.email(class="form-control") }}
         </div>
+        <div class="mb-3">
+            {{ form.client_kind.label(class="form-label") }}
+            {{ form.client_kind(class="form-select") }}
+        </div>
         {{ form.submit(class="btn btn-primary") }}
     </form>
 

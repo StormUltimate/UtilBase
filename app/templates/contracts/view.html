@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+{% set display_no = (contract.document_number or '')|trim %}
+{% block title %}Договор {% if display_no %}№ {{ display_no }}{% else %}#{{ contract.id }}{% endif %}{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ back_url or url_for('contracts.list_contracts') }}"><i class="bi bi-arrow-left"></i> Назад</a>
+    </li>
+    <li class="nav-item">
+        <span class="nav-link active">{% if display_no %}№ {{ display_no }}{% else %}#{{ contract.id }}{% endif %}</span>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+        <h2 class="mb-1">{% if display_no %}Договор № {{ display_no }}{% else %}Договор #{{ contract.id }}{% endif %}</h2>
+        <div class="text-muted small">
+            {% if display_no %}Внутр. № {{ contract.id }} · {% endif %}
+            Клиент:
+            <a href="{{ url_for('clients.client_detail', client_id=contract.client.id) if contract.client else '#' }}">
+                {{ contract.client.full_name if contract.client else '—' }}
+            </a>
+        </div>
+    </div>
+    <div class="d-flex flex-column align-items-end gap-2">
+        <a href="{{ url_for('contracts.edit_contract_wizard', contract_id=contract.id) }}" class="btn btn-success btn-sm">
+            <i class="bi bi-magic"></i> Мастер договора
+        </a>
+        <form method="post" action="{{ url_for('contracts.delete_contract', contract_id=contract.id) }}" onsubmit="return confirm('Удалить договор? Это действие необратимо.');">
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-trash"></i> Удалить договор
+            </button>
+        </form>
+        <div class="text-muted small text-end">
+            Создал: {{ contract.created_by.username if contract.created_by else '—' }}<br>
+            Дата создания: {{ contract.created_at.strftime('%d.%m.%Y %H:%M') if contract.created_at else '—' }}
+        </div>
+    </div>
+</div>
+
+<ul class="nav nav-pills mb-3" id="contractTabs" role="tablist">
+    <li class="nav-item" role="presentation"><button class="nav-link {% if active_tab == 'overview' %}active{% endif %}" data-bs-toggle="pill" data-bs-target="#tab-overview" type="button">Общее</button></li>
+    <li class="nav-item" role="presentation"><button class="nav-link {% if active_tab == 'terms' %}active{% endif %}" data-bs-toggle="pill" data-bs-target="#tab-terms" type="button">Паспорт договора</button></li>
+    <li class="nav-item" role="presentation"><button class="nav-link {% if active_tab == 'scope' %}active{% endif %}" data-bs-toggle="pill" data-bs-target="#tab-scope" type="button">Перечень оборудования</button></li>
+    <li class="nav-item" role="presentation"><button class="nav-link {% if active_tab == 'docs' %}active{% endif %}" data-bs-toggle="pill" data-bs-target="#tab-docs" type="button">Документы</button></li>
+    <li class="nav-item" role="presentation"><button class="nav-link {% if active_tab == 'requests' %}active{% endif %}" data-bs-toggle="pill" data-bs-target="#tab-requests" type="button">Заявки</button></li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade {% if active_tab == 'overview' %}show active{% endif %}" id="tab-overview">
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4"><div class="text-muted small">Дата заключения</div><div>{{ contract.conclusion_date.strftime('%d.%m.%Y') if contract.conclusion_date else '—' }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">Дата окончания</div><div>{{ contract.end_date.strftime('%d.%m.%Y') if contract.end_date else '—' }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">Номер для документов</div><div>{{ display_no or '—' }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">Сумма договора</div>
+                        <div>
+                            {% if (contract.price_mode or 'manual') == 'from_scope' %}
+                                {{ '{:,.0f}'.format(contract.total_price or 0)|replace(',', ' ') }} ₽
+                                <span class="badge bg-info text-dark ms-1">из перечня</span>
+                            {% else %}
+                                {{ '{:,.0f}'.format(contract.total_price or 0)|replace(',', ' ') }} ₽
+                                <span class="badge bg-secondary ms-1">вручную</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4"><div class="text-muted small">Аварийных в договоре (лимит)</div><div>{{ contract.emergency_included_count if contract.emergency_included_count is not none else '—' }}</div></div>
+                    <div class="col-md-4"><div class="text-muted small">Стоимость аварийных в договоре</div><div>{{ '{:,.0f}'.format(contract.emergency_included_cost or 0)|replace(',', ' ') }} ₽</div></div>
+                    <div class="col-md-4"><div class="text-muted small">Факт аварийных заявок</div><div>{{ emergency_requests|length }} шт, {{ '{:,.0f}'.format(emergency_cost_fact)|replace(',', ' ') }} ₽</div></div>
+                </div>
+            </div>
+        </div>
+        {% if wizard_view %}
+        <div class="card mb-3">
+            <div class="card-header fw-semibold">Заказчик и объект (из мастера)</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="text-muted small">Наименование / ФИО</div>
+                        <div>{{ wizard_view.client_snapshot.legal_name or (contract.client.full_name if contract.client else '—') }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted small">ИНН</div>
+                        <div>{{ wizard_view.client_snapshot.inn or '—' }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted small">КПП</div>
+                        <div>{{ wizard_view.client_snapshot.kpp or '—' }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">Контакт</div>
+                        <div>{{ wizard_view.client_snapshot.contact_person or '—' }}{% if wizard_view.client_snapshot.phone %} · {{ wizard_view.client_snapshot.phone }}{% endif %}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">Email</div>
+                        <div>{{ wizard_view.client_snapshot.email or '—' }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">Юридический адрес</div>
+                        <div>{{ wizard_view.client_snapshot.legal_address or '—' }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">Адрес объекта обслуживания</div>
+                        <div>{{ wizard_view.service_object_address or wizard_view.client_snapshot.actual_address or '—' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Оборудование и виды работ (из мастера)</span>
+                <span class="badge bg-primary">Плановых заявок: {{ wizard_view.planned_total_count }}</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive border rounded">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Оборудование</th>
+                                <th>Категория</th>
+                                <th>Серийный № / год</th>
+                                <th>Топливо</th>
+                                <th>Виды работ и график</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for eq in wizard_view.equipment_rows %}
+                            <tr>
+                                <td>{{ eq.name }}</td>
+                                <td>{{ eq.category_label }}</td>
+                                <td>{{ eq.serial or '—' }}{% if eq.year %} / {{ eq.year }}{% endif %}</td>
+                                <td>{{ eq.fuel_label }}</td>
+                                <td>
+                                    {% for wl in eq.work_lines %}
+                                    <div class="mb-2 {% if not loop.last %}border-bottom pb-2{% endif %}">
+                                        <div><strong>{{ wl.work_label }}</strong>, {{ '{:,.0f}'.format(wl.price_per_visit)|replace(',', ' ') }} ₽</div>
+                                        <div class="small text-muted">
+                                            Старт: {{ wl.start_date or '—' }}
+                                            · плановых: {{ wl.planned_count }}
+                                        </div>
+                                        {% if wl.first_dates %}
+                                        <div class="small">Первые даты: {{ wl.first_dates|join(', ') }}</div>
+                                        {% endif %}
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">Виды работ не заданы</span>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-center text-muted">Оборудование в мастере не заполнено</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="tab-pane fade {% if active_tab == 'terms' %}show active{% endif %}" id="tab-terms">
+        <div class="card">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="text-muted small">Тип договора</div>
+                        <div>{{ contract.contract_type or '—' }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-muted small">Вид контрагента</div>
+                        <div>{{ wizard_view.counterparty_kind or contract.counterparty_kind or '—' }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-muted small">Оплата</div>
+                        <div>
+                            {% if wizard_view.payment_terms == 'prepaid' %}Предоплата
+                            {% elif wizard_view.payment_terms == 'acts' %}По актам
+                            {% elif wizard_view.payment_terms == 'other' %}Иное
+                            {% else %}—{% endif %}
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="text-muted small">Комментарий к оплате</div>
+                        <div>{{ wizard_view.payment_terms_note or '—' }}</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="text-muted small">Дополнительные условия</div>
+                        <div class="border rounded p-2 bg-light">{{ contract.term_note or '—' }}</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="text-muted small">Периодичность / регламент</div>
+                        <div class="border rounded p-2 bg-light" style="white-space: pre-wrap;">{{ contract.service_periodicity or '—' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade {% if active_tab == 'scope' %}show active{% endif %}" id="tab-scope">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="{{ url_for('contracts.update_contract_terms', contract_id=contract.id) }}" class="row g-3">
+                    <input type="hidden" name="return_tab" value="scope">
+                    <div class="col-12">
+                        <div class="alert alert-light border mb-2 py-2">
+                            Перечень формируется из мастера договора. Ручное редактирование выключено.
+                            Для изменений откройте <a href="{{ url_for('contracts.edit_contract_wizard', contract_id=contract.id) }}">мастер договора</a>.
+                        </div>
+                        <div class="table-responsive border rounded">
+                            <table class="table table-sm table-striped mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Наименование</th>
+                                        <th>Вид обслуживания</th>
+                                        <th>Цена</th>
+                                        <th>Дата</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in scope_items %}
+                                    <tr>
+                                        <td>{{ row.name }}</td>
+                                        <td>{{ row.service_kind or '—' }}</td>
+                                        <td>{{ '{:,.0f}'.format(row.price or 0)|replace(',', ' ') }} ₽</td>
+                                        <td>{{ row.planned_date }}</td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="4" class="text-center text-muted">Перечень не сформирован</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-2 small fw-semibold">
+                            Итого по позициям: {{ '{:,.0f}'.format(scope_total)|replace(',', ' ') }} ₽
+                        </div>
+                    </div>
+                    <div class="col-12 d-flex justify-content-end">
+                        <button type="submit" class="btn btn-outline-secondary me-2" name="action" value="preview">Просмотр синхронизации</button>
+                        {% if preview_sync %}
+                        <button type="submit" class="btn btn-outline-success me-2" name="action" value="sync_confirm">Подтвердить и создать заявки</button>
+                        {% else %}
+                        <button type="submit" class="btn btn-outline-primary me-2" name="action" value="sync">Синхронизировать в заявки</button>
+                        {% endif %}
+                    </div>
+                </form>
+                {% if preview_sync %}
+                <hr>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="alert alert-success py-2 mb-0">
+                            Новые плановые заявки: <strong>{{ preview_sync.created_count }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="alert alert-info py-2 mb-0">
+                            Обновится существующих: <strong>{{ preview_sync.updated_count }}</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="alert alert-warning py-2 mb-0">
+                            Будет отменено: <strong>{{ preview_sync.cancelled_count }}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <h6 class="mb-2">Новые плановые заявки по договору (дата и позиция)</h6>
+                    <div class="table-responsive border rounded">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Наименование</th>
+                                    <th>Вид обслуживания</th>
+                                    <th>Сумма</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in preview_sync.created %}
+                                <tr>
+                                    <td>{{ row.planned_date }}</td>
+                                    <td>{{ row.name }}</td>
+                                    <td>{{ row.service_kind or '—' }}</td>
+                                    <td>{{ '{:,.0f}'.format(row.price or 0)|replace(',', ' ') }} ₽</td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="text-muted text-center">Новых заявок не будет</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade {% if active_tab == 'docs' %}show active{% endif %}" id="tab-docs">
+        <div class="card mb-3">
+            <div class="card-body">
+                <form method="post" action="{{ url_for('contracts.upload_contract_document', contract_id=contract.id) }}" enctype="multipart/form-data" class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Тип</label>
+                        <select name="document_kind" class="form-select">
+                            <option value="">Не указано</option>
+                            {% for k, label in contract_doc_kind_options %}
+                            <option value="{{ k }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Название</label>
+                        <input name="title" class="form-control" placeholder="Кратко, что за файл">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Файл</label>
+                        <input name="file" type="file" class="form-control" required>
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button class="btn btn-primary" type="submit">Загрузить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h6 class="mb-3">Скан/фото/документы по договору</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead><tr><th>Дата</th><th>Название</th><th>Вид</th><th>MIME</th><th>Кто загрузил</th><th>Файл</th></tr></thead>
+                        <tbody>
+                        {% for d in contract.documents %}
+                            <tr>
+                                <td>{{ d.created_at.strftime('%d.%m.%Y %H:%M') if d.created_at else '—' }}</td>
+                                <td>{{ d.title or 'Документ' }}</td>
+                                <td>{{ contract_doc_kind_labels.get(d.document_kind, d.document_kind or '—') if d.document_kind else '—' }}</td>
+                                <td class="small">{{ d.content_type or '—' }}</td>
+                                <td>{{ d.uploaded_by.username if d.uploaded_by else '—' }}</td>
+                                <td><a target="_blank" href="{{ url_for('static', filename=d.file_path) }}">Открыть</a></td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="6" class="text-muted text-center">Документы не загружены</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade {% if active_tab == 'requests' %}show active{% endif %}" id="tab-requests">
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3"><div class="text-muted small">Всего заявок</div><div>{{ all_requests|length }}</div></div>
+                    <div class="col-md-3"><div class="text-muted small">Плановые</div><div>{{ planned_requests|length }}</div></div>
+                    <div class="col-md-3"><div class="text-muted small">Аварийные</div><div>{{ emergency_requests|length }}</div></div>
+                    <div class="col-md-3"><div class="text-muted small">Просроченные плановые</div><div>{{ overdue_planned|length }}</div></div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead><tr><th>Заявка</th><th>Дата</th><th>Тип</th><th>Статус</th><th>Сумма</th><th>Открыть</th></tr></thead>
+                        <tbody>
+                        {% for r in all_requests %}
+                            {% set req_type = r.type or (r.service_type.value if r.service_type else '') %}
+                            <tr>
+                                <td>{{ r.request_number or ('#' ~ r.id) }}</td>
+                                <td>{{ r.planned_date.strftime('%d.%m.%Y') if r.planned_date else '—' }}</td>
+                                <td>{{ req_type or '—' }}</td>
+                                <td>{{ r.status.value if r.status else '—' }}</td>
+                                <td>{{ '{:,.0f}'.format(r.total_price or r.urgent_price or 0)|replace(',', ' ') }} ₽</td>
+                                <td><a href="{{ url_for('requests.view_request', id=r.id, next=request.full_path) }}">Карточка</a></td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="6" class="text-center text-muted">Заявок по договору нет</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+(() => {
+    // Legacy редактор перечня удален: карточка работает в мастер-формате (read-only + sync preview).
+})();
+</script>
+{% endblock %}

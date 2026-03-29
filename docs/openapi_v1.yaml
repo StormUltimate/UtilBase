@@ -1,0 +1,505 @@
+openapi: 3.0.3
+info:
+  title: UtilBase Mobile API
+  version: "1.0.0"
+  description: Minimal contract for Android executor app.
+servers:
+  - url: /api/v1
+tags:
+  - name: auth
+  - name: requests
+  - name: checklist
+  - name: finance
+  - name: chat
+  - name: media
+paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Login and get access/refresh tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Tokens issued
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Rotate refresh token and issue a new access token
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Tokens rotated
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke refresh token
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        "200":
+          description: Token revoked
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User profile
+  /requests:
+    get:
+      tags: [requests]
+      summary: List requests available for user
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: filter
+          description: Для ролей исполнителя без параметра подразумевается active (без закрытых и отменённых).
+          schema:
+            type: string
+            enum: [all, active, today, overdue, planned, emergency, repair]
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        "200":
+          description: Request list
+  /requests/{id}:
+    get:
+      tags: [requests]
+      summary: Get request details
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Request details
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /requests/{id}/take:
+    post:
+      tags: [requests]
+      summary: Take unassigned request
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+        - $ref: "#/components/parameters/clientOperationIdHeader"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientOperation"
+      responses:
+        "200":
+          description: Request assigned to executor
+  /requests/{id}/mode:
+    post:
+      tags: [requests]
+      summary: Update request execution mode
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+        - $ref: "#/components/parameters/clientOperationIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ClientOperation"
+                - type: object
+                  required: [mode]
+                  properties:
+                    mode:
+                      type: string
+                      enum: [normal, on_way, arrived, in_progress, waiting, completed]
+      responses:
+        "200":
+          description: Mode changed
+        "409":
+          description: FSM conflict
+  /requests/{id}/close:
+    post:
+      tags: [requests]
+      summary: Close request after close rules pass
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+        - $ref: "#/components/parameters/clientOperationIdHeader"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientOperation"
+      responses:
+        "200":
+          description: Request closed
+        "409":
+          description: conflict_fsm
+  /requests/{id}/checklist-template:
+    get:
+      tags: [checklist]
+      summary: Get resolved checklist template for request
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Checklist template and answers
+  /requests/{id}/checklist-submit:
+    post:
+      tags: [checklist]
+      summary: Submit checklist answers
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      item_id:
+                        type: integer
+                      checked:
+                        type: boolean
+                      value_text:
+                        type: string
+                      value_number:
+                        type: number
+                      media_id:
+                        type: integer
+      responses:
+        "200":
+          description: Checklist state updated
+  /requests/{id}/media:
+    get:
+      tags: [media]
+      summary: List media attached to request
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Media list
+    post:
+      tags: [media]
+      summary: Upload request media (photo/video/file)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+        - $ref: "#/components/parameters/clientOperationIdHeader"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                category:
+                  type: string
+                  description: Назначение файла (process, defect, work_order, payment_proof, …)
+                client_operation_id:
+                  type: string
+      responses:
+        "201":
+          description: Media uploaded
+  /requests/{id}/defects:
+    get:
+      tags: [requests]
+      summary: List recorded defects for request
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Defects list
+    post:
+      tags: [requests]
+      summary: Record a defect (equipment or material), optional link to uploaded media
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+        - $ref: "#/components/parameters/clientOperationIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, description]
+              properties:
+                kind:
+                  type: string
+                  enum: [equipment, material]
+                description:
+                  type: string
+                media_id:
+                  type: integer
+                client_operation_id:
+                  type: string
+      responses:
+        "201":
+          description: Defect created
+  /requests/{id}/items:
+    get:
+      tags: [finance]
+      summary: List request items
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Items and totals
+    post:
+      tags: [finance]
+      summary: Create request item
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+        - $ref: "#/components/parameters/clientOperationIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ClientOperation"
+                - type: object
+                  required: [name]
+                  properties:
+                    item_type:
+                      type: string
+                      enum: [material, work, extra]
+                    name:
+                      type: string
+                    quantity:
+                      type: number
+                    unit_price:
+                      type: number
+                    source:
+                      type: string
+      responses:
+        "201":
+          description: Item created
+  /requests/{id}/items/{itemId}:
+    patch:
+      tags: [finance]
+      summary: Update request item
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Item updated
+    delete:
+      tags: [finance]
+      summary: Delete request item
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Item deleted
+  /requests/{id}/payments:
+    get:
+      tags: [finance]
+      summary: List request payments
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Payments list
+    post:
+      tags: [finance]
+      summary: Add payment for request
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+        - $ref: "#/components/parameters/clientOperationIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ClientOperation"
+                - type: object
+                  required: [amount]
+                  properties:
+                    amount:
+                      type: number
+                    payment_method:
+                      type: string
+                    is_cash:
+                      type: boolean
+                    note:
+                      type: string
+      responses:
+        "201":
+          description: Payment added
+  /requests/{id}/chat/messages:
+    get:
+      tags: [chat]
+      summary: List request chat messages
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Chat messages
+    post:
+      tags: [chat]
+      summary: Send chat message
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+        - $ref: "#/components/parameters/clientOperationIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/ClientOperation"
+                - type: object
+                  required: [message_text]
+                  properties:
+                    message_text:
+                      type: string
+      responses:
+        "201":
+          description: Message created
+  /requests/{id}/logs:
+    get:
+      tags: [requests]
+      summary: List request action logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/requestId"
+      responses:
+        "200":
+          description: Action logs
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    requestId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    clientOperationIdHeader:
+      name: X-Client-Operation-Id
+      in: header
+      required: false
+      schema:
+        type: string
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+  schemas:
+    ClientOperation:
+      type: object
+      properties:
+        client_operation_id:
+          type: string
+          description: UUID for idempotent offline operation.
+    ErrorEnvelope:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - validation_error
+                - invalid_state
+                - conflict_fsm
+                - forbidden
+                - not_found
+                - unauthorized
+                - server_error
+                - https_required
+            message:
+              type: string

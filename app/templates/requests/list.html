@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/client_picker.html' import client_picker %}
 {% block title %}Заявки{% endblock %}
 
 {% block tabs %}
@@ -20,23 +21,40 @@
         </ol>
     </nav>
     {% if request_form %}
-    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addRequestModal">
-        <i class="bi bi-plus-lg"></i> Новая заявка
-    </button>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('analytics.masters') }}" class="btn btn-outline-primary">
+            <i class="bi bi-bar-chart"></i> Аналитика
+        </a>
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addRequestModal">
+            <i class="bi bi-plus-lg"></i> Новая заявка
+        </button>
+    </div>
+    {% else %}
+    <a href="{{ url_for('analytics.masters') }}" class="btn btn-outline-primary">
+        <i class="bi bi-bar-chart"></i> Аналитика
+    </a>
     {% endif %}
+</div>
+
+<div class="d-flex align-items-center gap-2 mb-2">
+    <span class="badge bg-secondary">Всего: {{ total_requests }}</span>
+    <span class="badge bg-primary">По фильтру: {{ filtered_requests }}</span>
 </div>
 
 {# Фильтры #}
 <div class="card mb-4">
     <div class="card-body py-3">
         <form method="get" action="{{ url_for('requests.list_requests') }}" class="row g-2 g-md-3 align-items-end" id="filterForm">
-            <div class="col-6 col-md-2">
+            <div class="col-12 col-md-3 col-lg-2">
                 <label class="form-label small mb-0">Быстрый фильтр</label>
                 <select name="filter" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="all" {% if filter == 'all' %}selected{% endif %}>Все</option>
+                    <option value="all" {% if filter == 'all' %}selected{% endif %}>Активные (без закрытых)</option>
                     <option value="today" {% if filter == 'today' %}selected{% endif %}>Сегодня</option>
                     <option value="planned" {% if filter == 'planned' %}selected{% endif %}>Планируемые</option>
                     <option value="overdue" {% if filter == 'overdue' %}selected{% endif %}>Просроченные</option>
+                    <option value="closed" {% if filter == 'closed' %}selected{% endif %}>Закрытые</option>
+                    <option value="cancelled" {% if filter == 'cancelled' %}selected{% endif %}>Отменённые</option>
+                    <option value="everything" {% if filter == 'everything' %}selected{% endif %}>Все (включая закрытые)</option>
                 </select>
             </div>
             <div class="col-6 col-md-2">
@@ -50,12 +68,11 @@
             </div>
             <div class="col-6 col-md-2">
                 <label class="form-label small mb-0">Статус</label>
-                <select name="status" class="form-select form-select-sm">
+                <select name="status" class="form-select form-select-sm" title="Уточнение по статусу (в сочетании с быстрым фильтром)">
                     <option value="">Все</option>
-                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Ожидает</option>
                     <option value="assigned" {% if status_filter == 'assigned' %}selected{% endif %}>Назначена</option>
                     <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>Закрыта</option>
-                    <option value="overdue" {% if status_filter == 'overdue' %}selected{% endif %}>Просрочена</option>
+                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Отменена</option>
                 </select>
             </div>
             <div class="col-6 col-md-2">
@@ -66,13 +83,16 @@
                 <label class="form-label small mb-0">По</label>
                 <input type="date" name="date_to" class="form-control form-control-sm" value="{{ date_to or '' }}">
             </div>
-            <div class="col-12 col-md-2">
-                <label class="form-label small mb-0">Клиент</label>
-                <input type="search" name="search" class="form-control form-control-sm" placeholder="Поиск..." value="{{ search_client or '' }}">
+            <div class="col-12 col-md-3">
+                <label class="form-label small mb-0">Клиент (ФИО, телефон, адрес)</label>
+                <input type="search" name="search" class="form-control form-control-sm" placeholder="Как в списке клиентов" value="{{ search_client or '' }}">
             </div>
             <div class="col-12 col-md-auto">
                 <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Применить</button>
-                <a href="{{ url_for('requests.list_requests') }}" class="btn btn-outline-secondary btn-sm">Сбросить</a>
+                <a href="{{ url_for('requests.list_requests') }}" class="btn btn-outline-secondary btn-sm" title="Сброс фильтров; закрытые снова скрыты">Сбросить</a>
+                <a href="{{ url_for('requests.list_requests', filter='overdue') }}" class="btn btn-outline-danger btn-sm ms-1">
+                    <i class="bi bi-funnel-fill"></i> Просроченные
+                </a>
                 <a href="{{ url_for('requests.list_requests', type='emergency') }}" class="btn btn-outline-danger btn-sm ms-1">
                     <i class="bi bi-exclamation-triangle"></i> Аварийные
                 </a>
@@ -114,6 +134,9 @@
                     {% else %}
                         <span class="badge bg-secondary">—</span>
                     {% endif %}
+                    {% if req.contract_scope_uid %}
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1">Из перечня договора</span>
+                    {% endif %}
                 </td>
                 <td>{{ client_name }}</td>
                 <td title="{{ client_addr }}">{{ client_addr|truncate(40) }}</td>
@@ -121,12 +144,12 @@
                 <td>
                     {% set st = req.status.value if req.status else '' %}
                     {% set st_label =
-                        'Ожидает' if st == 'pending' else
-                        'Назначена' if st == 'assigned' else
-                        'Закрыта' if st == 'closed' else
+                        'Назначена' if st in ('pending', 'assigned') else
                         'Просрочена' if st == 'overdue' else
+                        'Закрыта' if st == 'closed' else
+                        'Отменена' if st == 'cancelled' else
                         '—' %}
-                    <span class="badge bg-{% if st == 'closed' %}success{% elif st == 'overdue' %}danger{% elif st == 'assigned' %}warning{% else %}secondary{% endif %}">
+                    <span class="badge bg-{% if st == 'closed' %}success{% elif st == 'overdue' %}danger{% elif st == 'cancelled' %}dark{% elif st in ('assigned', 'pending') %}warning{% else %}secondary{% endif %}">
                         {{ st_label }}
                     </span>
                 </td>
@@ -145,12 +168,19 @@
                     {% endif %}
                 </td>
                 <td class="text-end">
-                    <a href="{{ url_for('requests.view_request', id=req.id) }}" class="btn btn-sm btn-outline-primary">
+                    <a href="{{ url_for('requests.view_request', id=req.id, next=request.full_path) }}" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-eye"></i>
                     </a>
-                    <a href="{{ url_for('requests.edit_request', id=req.id) }}" class="btn btn-sm btn-outline-secondary">
+                    <a href="{{ url_for('requests.edit_request', id=req.id, next=request.full_path) }}" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-pencil"></i>
                     </a>
+                    {% if not req.status or req.status.value != 'cancelled' %}
+                    <form action="{{ url_for('requests.cancel_request', id=req.id) }}" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Отменить" onclick="return confirm('Отметить заявку как отменённую клиентом?')">
+                            <i class="bi bi-slash-circle"></i>
+                        </button>
+                    </form>
+                    {% endif %}
                 </td>
             </tr>
         {% else %}
@@ -185,9 +215,9 @@
                 <div class="modal-body">
                     {{ request_form.hidden_tag() }}
                     <div class="row g-3">
-                        <div class="col-md-6">
-                            {{ request_form.client_id.label(class="form-label") }}
-                            {{ request_form.client_id(class="form-select") }}
+                        <div class="col-12">
+                            <label class="form-label">Клиент</label>
+                            {{ client_picker('client_id', 'list_modal_req', hidden_value=0, initial_display='', show_kind=True) }}
                         </div>
                         <div class="col-md-6">
                             {{ request_form.workers.label(class="form-label") }}
@@ -205,21 +235,13 @@
                             {{ request_form.planned_date.label(class="form-label") }}
                             {{ request_form.planned_date(class="form-control") }}
                         </div>
-                        <div class="col-md-6">
-                            {{ request_form.status.label(class="form-label") }}
-                            {{ request_form.status(class="form-select") }}
-                        </div>
                         <div class="col-12">
                             {{ request_form.description.label(class="form-label") }}
                             {{ request_form.description(class="form-control", rows="3") }}
                         </div>
                         <div class="col-md-6">
-                            {{ request_form.urgent_price.label(class="form-label") }}
-                            {{ request_form.urgent_price(class="form-control") }}
-                        </div>
-                        <div class="col-md-6">
                             {{ request_form.total_price.label(class="form-label") }}
-                            {{ request_form.total_price(class="form-control") }}
+                            {{ request_form.total_price(class="form-control", type="number", step="0.01", placeholder="0") }}
                         </div>
                     </div>
                 </div>

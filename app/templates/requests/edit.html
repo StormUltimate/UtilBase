@@ -1,15 +1,18 @@
 <!-- Path: V:\UtilBase\app\templates\requests\edit.html -->
 {% extends "base.html" %}
+{% from 'macros/client_picker.html' import client_picker %}
 {% block title %}Редактировать заявку{% endblock %}
 
 {% block content %}
     <h2 class="mb-3">Редактировать заявку #{{ req.id }}</h2>
     <form method="POST" class="row g-3">
         {{ form.hidden_tag() }}
+        <input type="hidden" name="next" value="{{ next_url or '' }}">
 
-        <div class="col-12 col-md-4">
-            {{ form.client_id.label(class="form-label") }}
-            {{ form.client_id(class="form-select") }}
+        <div class="col-12 col-md-6">
+            <label class="form-label">Клиент</label>
+            {{ client_picker('client_id', 'edit_req', hidden_value=form.client_id.data or 0, initial_display=client_picker_label|default(''), show_kind=True) }}
+            <div class="form-text small">Поиск по ФИО, телефону и адресу; при необходимости сузьте список по виду клиента.</div>
         </div>
         <div class="col-12 col-md-4">
             {{ form.full_name.label(class="form-label") }}
@@ -17,37 +20,39 @@
         </div>
         <div class="col-12 col-md-4">
             {{ form.phone.label(class="form-label") }}
-            {{ form.phone(class="form-control") }}
+            {{ form.phone(class="form-control", id="requestPhoneInput") }}
         </div>
         <div class="col-12">
             {{ form.address.label(class="form-label") }}
-            {{ form.address(class="form-control") }}
+            {{ form.address(class="form-control", id="requestAddressInput") }}
         </div>
         <div class="col-12">
             {{ form.description.label(class="form-label") }}
             {{ form.description(class="form-control", rows="3") }}
         </div>
 
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-3">
             {{ form.type.label(class="form-label") }}
             {{ form.type(class="form-select") }}
         </div>
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-3">
+            {{ form.visit_type.label(class="form-label") }}
+            {{ form.visit_type(class="form-select") }}
+        </div>
+        <div class="col-12 col-md-3">
             {{ form.service_type.label(class="form-label") }}
             {{ form.service_type(class="form-select") }}
         </div>
-        <div class="col-12 col-md-4">
+        <div class="col-12 col-md-3">
             {{ form.status.label(class="form-label") }}
             {{ form.status(class="form-select") }}
+            {% if req.status and req.status.value == 'overdue' %}
+            <p class="form-text small mb-0">Просрочка выставляется автоматически. Чтобы сменить статус — выберите значение ниже (не «—»).</p>
+            {% endif %}
         </div>
-
-        <div class="col-12 col-md-4">
-            {{ form.urgent_price.label(class="form-label") }}
-            {{ form.urgent_price(class="form-control") }}
-        </div>
-        <div class="col-12 col-md-4">
-            {{ form.contract_regulated_price.label(class="form-label") }}
-            {{ form.contract_regulated_price(class="form-control") }}
+        <div class="col-12 col-md-3">
+            {{ form.mode.label(class="form-label") }}
+            {{ form.mode(class="form-select") }}
         </div>
         <div class="col-12 col-md-4">
             {{ form.total_price.label(class="form-label") }}
@@ -65,16 +70,6 @@
         <div class="col-12 col-md-4">
             {{ form.planned_end_time.label(class="form-label") }}
             {{ form.planned_end_time(class="form-control") }}
-        </div>
-
-        <div class="col-12 col-md-4">
-            {{ form.estimated_time.label(class="form-label") }}
-            {{ form.estimated_time(class="form-control") }}
-        </div>
-
-        <div class="col-12 col-md-4">
-            {{ form.mode.label(class="form-label") }}
-            {{ form.mode(class="form-select") }}
         </div>
 
         <div class="col-12">
@@ -120,7 +115,7 @@
 
         <div class="col-12 mt-3">
             {{ form.submit(class="btn btn-primary") }}
-            <a href="{{ url_for('requests.view_request', id=req.id) }}" class="btn btn-outline-secondary ms-2">Отмена</a>
+            <a href="{{ next_url or url_for('requests.view_request', id=req.id) }}" class="btn btn-outline-secondary ms-2">Отмена</a>
         </div>
     </form>
 {% endblock %}
@@ -144,6 +139,36 @@
             updateWorkersCount();
         }
     });
+
+    async function syncContactsFromClient() {
+        var clientInput = document.querySelector('input.client-picker-hidden[name="client_id"]');
+        var phoneInput = document.getElementById('requestPhoneInput');
+        var addressInput = document.getElementById('requestAddressInput');
+        if (!clientInput || !phoneInput || !addressInput) return;
+
+        var clientId = (clientInput.value || '').trim();
+        if (!clientId || clientId === '0') return;
+
+        try {
+            var resp = await fetch('/requests/api/get_client/' + encodeURIComponent(clientId), { credentials: 'same-origin' });
+            if (!resp.ok) return;
+            var data = await resp.json();
+            if (data) {
+                phoneInput.value = data.phone || '';
+                addressInput.value = data.address || '';
+            }
+        } catch (_err) {
+            // ignore network errors; user can still edit manually
+        }
+    }
+
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.classList && e.target.classList.contains('client-picker-hidden') && e.target.name === 'client_id') {
+            syncContactsFromClient();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', syncContactsFromClient);
     document.addEventListener('DOMContentLoaded', updateWorkersCount);
 })();
 </script>

@@ -1,35 +1,13 @@
-<!-- Path: app/templates/equipment/add.html -->
 {% extends "base.html" %}
+{% from 'macros/client_picker.html' import client_picker %}
 {% block title %}Добавить оборудование{% if client %} клиента #{{ client.id }}{% endif %}{% endblock %}
 
 {% block tabs %}
-    {% if client %}
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('clients.view_client', id=client.id) }}">Карточка клиента</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('equipment.client_passport', client_id=client.id) }}">Паспортизация</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('equipment.client_equipment_list', client_id=client.id) }}">Список оборудования</a>
-    </li>
-    <li class="nav-item active">
-        <a class="nav-link" href="{{ url_for('equipment.add_client_equipment', client_id=client.id) }}">Добавить оборудование</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('equipment.client_hierarchy', client_id=client.id) }}">Иерархия</a>
-    </li>
-    {% else %}
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('equipment.list_equipment') }}">Общий список</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('equipment.templates_list') }}">Шаблоны</a>
-     </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('equipment.hierarchy') }}">Иерархия</a>
-    </li>
-    {% endif %}
+    <div class="mb-3">
+        <a class="btn btn-outline-secondary btn-sm" href="{% if client %}{{ url_for('clients.client_detail', client_id=client.id) }}{% else %}{{ url_for('equipment.list_equipment') }}{% endif %}">
+            <i class="bi bi-arrow-left"></i> Назад
+        </a>
+    </div>
 {% endblock %}
 
 {% block content %}
@@ -38,6 +16,16 @@
 
     <form method="POST" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
+        {% if not client %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <h6 class="mb-3">Клиент</h6>
+                {{ client_picker('client_id', 'equipment_add', hidden_value=request.form.get('client_id', 0), initial_display='', show_kind=True) }}
+            </div>
+        </div>
+        {% endif %}
+
+        <h6 class="mb-2">Параметры оборудования</h6>
         <div class="form-group">
             {{ form.type.label }} {{ form.type(class="form-control", id="type") }}
         </div>

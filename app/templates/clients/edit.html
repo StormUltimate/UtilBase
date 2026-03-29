@@ -19,6 +19,7 @@
 
     <form method="post" class="card card-body">
         {{ form.hidden_tag() }}
+        <input type="hidden" name="next" value="{{ next_url or '' }}">
         <div class="mb-3">
             {{ form.full_name.label(class="form-label") }}
             {{ form.full_name(class="form-control") }}
@@ -43,6 +44,10 @@
             {{ form.email.label(class="form-label") }}
             {{ form.email(class="form-control") }}
         </div>
+        <div class="mb-3">
+            {{ form.client_kind.label(class="form-label") }}
+            {{ form.client_kind(class="form-select") }}
+        </div>
         <div class="form-check mb-3">
             {{ form.reset_coords(class="form-check-input", id="resetCoordsCheck") }}
             <label class="form-check-label" for="resetCoordsCheck">
@@ -50,6 +55,7 @@
             </label>
         </div>
         {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ next_url or url_for('clients.clients') }}" class="btn btn-outline-secondary ms-2">Назад</a>
     </form>
 
     {% with messages = get_flashed_messages(with_categories=true) %}

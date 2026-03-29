@@ -1,47 +1,138 @@
-# Path: app/templates/equipment/templates.html
-
 {% extends "base.html" %}
 {% block title %}Шаблоны оборудования{% endblock %}
 
 {% block tabs %}
-    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.list_equipment') }}">Общий список</a></li>
-    <li class="nav-item"><a class="nav-link active" href="{{ url_for('equipment.templates_list') }}">Шаблоны</a></li>
-    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.add_equipment') }}">Добавить оборудование</a></li>
-    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.import_templates') }}">Импорт шаблонов</a></li>
-    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.hierarchy') }}">Иерархия</a></li>
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.list_equipment') }}">Оборудование</a></li>
+    <li class="nav-item"><span class="nav-link active">Шаблоны оборудования</span></li>
+    <li class="nav-item"><a class="nav-link" href="{{ url_for('equipment.templates_hierarchy') }}">Иерархия шаблонов</a></li>
+</ul>
 {% endblock %}
 
 {% block content %}
-    <h1>Шаблоны оборудования
-        <a href="{{ url_for('equipment.import_templates') }}" class="btn btn-secondary">Импорт шаблонов</a>
-        <a href="{{ url_for('equipment.templates_export') }}" class="btn btn-secondary">Экспорт Excel</a>
-    </h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Шаблоны оборудования</h2>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('equipment.add_template') }}" class="btn btn-success btn-sm">
+            <i class="bi bi-plus-lg"></i> Добавить шаблон
+        </a>
+        <a href="{{ url_for('equipment.import_templates') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-upload"></i> Импорт
+        </a>
+        <a href="{{ url_for('equipment.templates_export') }}" class="btn btn-outline-warning btn-sm">
+            <i class="bi bi-file-earmark-spreadsheet"></i> Экспорт
+        </a>
+    </div>
+</div>
 
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Тип</th>
-                <th>Бренд</th>
-                <th>Модель</th>
-                <th>Действия</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for t in templates %}
-                <tr>
-                    <td>{{ t.id }}</td>
-                    <td>{{ t.type or 'Не указано' }}</td>
-                    <td>{{ t.brand or 'Не указано' }}</td>
-                    <td>{{ t.model or 'Не указано' }}</td>
-                    <td>
-                        <a href="{{ url_for('equipment.edit_template', id=t.id) }}" class="btn btn-sm btn-warning">Редактировать</a>
-                        <form method="POST" action="{{ url_for('equipment.delete_template', id=t.id) }}" style="display:inline;">
-                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Вы уверены?');">Удалить</button>
-                        </form>
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="card mb-3">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 g-md-3 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-1">Тип</label>
+                <select name="type" class="form-select form-select-sm">
+                    <option value="">Все</option>
+                    {% for t in types %}
+                    <option value="{{ t }}" {% if type_filter == t %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-1">Бренд</label>
+                <select name="brand" class="form-select form-select-sm">
+                    <option value="">Все</option>
+                    {% for b in brands %}
+                    <option value="{{ b }}" {% if brand_filter == b %}selected{% endif %}>{{ b }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-1">Модель</label>
+                <select name="model" class="form-select form-select-sm">
+                    <option value="">Все</option>
+                    {% for m in models %}
+                    <option value="{{ m }}" {% if model_filter == m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">Мощность</label>
+                <select name="power" class="form-select form-select-sm">
+                    <option value="">Все</option>
+                    {% for p in powers %}
+                    <option value="{{ p }}" {% if power_filter == p|string %}selected{% endif %}>{{ p }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label small mb-1">Поиск</label>
+                <input type="text" name="search" class="form-control form-control-sm"
+                       placeholder="Тип, бренд, модель, серийный..."
+                       value="{{ search_q or '' }}">
+            </div>
+            <div class="col-12 col-md-auto">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-funnel"></i> Применить
+                </button>
+                <a href="{{ url_for('equipment.templates_list') }}" class="btn btn-outline-secondary btn-sm">
+                    Сбросить
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Тип</th>
+                        <th>Бренд / модель</th>
+                        <th>Мощность</th>
+                        <th>Серийный №</th>
+                        <th>Год</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in templates %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('equipment.template_item_hierarchy', id=t.id) }}" class="text-decoration-none">
+                                {{ t.type or '—' }}
+                            </a>
+                        </td>
+                        <td>{{ t.brand or '—' }}{% if t.model %} / {{ t.model }}{% endif %}</td>
+                        <td>{{ t.power or '—' }}</td>
+                        <td>{{ t.serial_number or '—' }}</td>
+                        <td>{{ t.production_year or '—' }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('equipment.checklist_templates_list', equipment_type=t.type or '') }}" class="btn btn-sm btn-outline-success" title="Чек-листы">
+                                <i class="bi bi-ui-checks-grid"></i>
+                            </a>
+                            <a href="{{ url_for('equipment.edit_template', id=t.id) }}" class="btn btn-sm btn-outline-primary" title="Редактировать">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <form method="POST" action="{{ url_for('equipment.delete_template', id=t.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Удалить этот шаблон?');" title="Удалить">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            Шаблоны оборудования не найдены.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 {% endblock %}

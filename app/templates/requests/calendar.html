@@ -1,46 +1,85 @@
 {% extends "base.html" %}
+{% from 'macros/client_picker.html' import client_picker %}
 {% block title %}План-график{% endblock %}
 
 {% block tabs %}
 <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
         <span class="nav-link active">
-            <i class="bi bi-calendar3"></i> План-график
+            <i class="bi bi-calendar3"></i> План-график заявок
         </span>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('workers.worker_calendar') }}"><i class="bi bi-people"></i> Исполнители</a>
     </li>
 </ul>
 {% endblock %}
 
 {% block content %}
-    <h1 class="mb-3">План-график</h1>
+    <div class="mb-3">
+        <h1 class="h3 mb-0">План-график</h1>
+        <p class="text-muted small mb-0 mt-2">
+            Подвкладка «Исполнители» — только <strong>смены из базы</strong> по людям; заявки отображаются на этом план‑графике.
+        </p>
+    </div>
 
-    <form method="GET">
-        <label>Клиент:</label>
-        <select name="client_id">
-            <option value="all">Все</option>
-            {% for client in clients %}
-                <option value="{{ client.id }}">{{ client.full_name }}</option>
-            {% endfor %}
-        </select>
-
-        <label>Исполнитель:</label>
-        <select name="worker_id">
-            <option value="all">Все</option>
-            {% for worker in workers %}
-                <option value="{{ worker.id }}">{{ worker.full_name }}</option>
-            {% endfor %}
-        </select>
-
-        <label>Статус:</label>
-        <select name="status">
-            <option value="all">Все</option>
-            {% for stat in statuses %}
-                <option value="{{ stat }}">{{ stat }}</option>
-            {% endfor %}
-        </select>
-
-        <button type="submit">Применить</button>
+    <form method="GET" class="row g-2 align-items-end mb-3">
+        <div class="col-12 col-md-4">
+            <label class="form-label small mb-0">Клиент</label>
+            {{ client_picker('client_id', 'cal_filter', hidden_value=calendar_client_id|default('all'), initial_display=calendar_client_label|default(''), show_kind=True, allow_all='all') }}
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label small mb-0">Исполнитель</label>
+            <select name="worker_id" class="form-select form-select-sm">
+                <option value="all" {% if request.args.get('worker_id', 'all') == 'all' %}selected{% endif %}>Все</option>
+                {% for worker in workers %}
+                <option value="{{ worker.id }}" {% if request.args.get('worker_id') == worker.id|string %}selected{% endif %}>{{ worker.full_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label small mb-0">Статус</label>
+            <select name="status" class="form-select form-select-sm">
+                <option value="all" {% if request.args.get('status', 'all') == 'all' %}selected{% endif %}>Все</option>
+                {% for stat in statuses %}
+                <option value="{{ stat }}" {% if request.args.get('status') == stat %}selected{% endif %}>{{ stat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary btn-sm">Применить</button>
+        </div>
     </form>
+
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-2 mt-2 small">
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="fcLayerShift" checked>
+            <label class="form-check-label" for="fcLayerShift">Слой рабочего времени 9:00–19:00</label>
+        </div>
+        <span class="text-muted">Заявки — поверх заливки; перетаскивание — только заявок (админ).</span>
+    </div>
+
+    <!-- Модальное окно: просмотр заявки без ухода со страницы календаря -->
+    <div class="modal fade" id="requestCalendarModal" tabindex="-1" aria-labelledby="requestCalendarModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header py-2">
+                    <h5 class="modal-title" id="requestCalendarModalLabel">
+                        <i class="bi bi-ticket-perforated text-primary"></i> Заявка <span id="modalReqNumber"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body small" id="requestCalendarModalBody">
+                    <p class="text-muted mb-2">Загрузка…</p>
+                </div>
+                <div class="modal-footer flex-wrap gap-2 py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <a id="modalBtnFull" class="btn btn-primary" href="#"><i class="bi bi-box-arrow-up-right"></i> Полная карточка</a>
+                    <a id="modalBtnEdit" class="btn btn-outline-primary d-none" href="#"><i class="bi bi-pencil"></i> Редактировать</a>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div id="calendar"></div>
 {% endblock %}
@@ -49,13 +88,62 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            function summaryUrl(id) {
+                return '/requests/api/request/' + id + '/summary';
+            }
             var calendarEl = document.getElementById('calendar');
+            var modalEl = document.getElementById('requestCalendarModal');
+            var modalBody = document.getElementById('requestCalendarModalBody');
+            var modalReqNumber = document.getElementById('modalReqNumber');
+            var modalBtnFull = document.getElementById('modalBtnFull');
+            var modalBtnEdit = document.getElementById('modalBtnEdit');
+            var bsModal = modalEl ? new bootstrap.Modal(modalEl) : null;
+
+            function escapeHtml(s) {
+                if (!s) return '';
+                var d = document.createElement('div');
+                d.textContent = s;
+                return d.innerHTML;
+            }
+
+            function fillModal(data) {
+                modalReqNumber.textContent = data.request_number || data.id;
+                modalBtnFull.href = data.view_url || '#';
+                if (data.can_edit) {
+                    modalBtnEdit.href = data.edit_url || '#';
+                    modalBtnEdit.classList.remove('d-none');
+                } else {
+                    modalBtnEdit.classList.add('d-none');
+                }
+                var html = '<dl class="row mb-0">';
+                html += '<dt class="col-sm-3 text-muted">Клиент</dt><dd class="col-sm-9">' + escapeHtml(data.client_name) + '</dd>';
+                html += '<dt class="col-sm-3 text-muted">Адрес</dt><dd class="col-sm-9">' + escapeHtml(data.address) + '</dd>';
+                html += '<dt class="col-sm-3 text-muted">Телефон</dt><dd class="col-sm-9">' + escapeHtml(data.phone) + '</dd>';
+                html += '<dt class="col-sm-3 text-muted">Исполнители</dt><dd class="col-sm-9">' + escapeHtml(data.workers) + '</dd>';
+                html += '<dt class="col-sm-3 text-muted">План</dt><dd class="col-sm-9">' + escapeHtml(data.planned_date);
+                if (data.planned_start || data.planned_end) {
+                    html += ' <span class="text-nowrap">(' + escapeHtml((data.planned_start || '—') + ' — ' + (data.planned_end || '—')) + ')</span>';
+                }
+                html += '</dd>';
+                html += '<dt class="col-sm-3 text-muted">Статус</dt><dd class="col-sm-9">' + escapeHtml(data.status) + '</dd>';
+                html += '<dt class="col-sm-3 text-muted">Тип</dt><dd class="col-sm-9">' + escapeHtml(String(data.type || '—')) + '</dd>';
+                html += '<dt class="col-sm-3 text-muted">Тип выезда</dt><dd class="col-sm-9">' + escapeHtml(String(data.visit_type_label || '—')) + '</dd>';
+                html += '<dt class="col-sm-3 text-muted">Описание</dt><dd class="col-sm-9">' + escapeHtml(data.description) + '</dd>';
+                if (data.comment) {
+                    html += '<dt class="col-sm-3 text-muted">Комментарий</dt><dd class="col-sm-9">' + escapeHtml(data.comment) + '</dd>';
+                }
+                html += '</dl>';
+                modalBody.innerHTML = html;
+            }
+
+            var shiftBgUrl = {{ url_for('requests.api_shift_backgrounds') | tojson }};
+
             var calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'timeGridWeek',  // Неделя с таймгрид по умолчанию
+                initialView: 'timeGridWeek',
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'  // Виды: месяц, неделя, день, список
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
                 },
                 buttonText: {
                     today: 'Сегодня',
@@ -64,57 +152,167 @@
                     day: 'День',
                     list: 'Список'
                 },
-                locale: 'ru',  // Локализация на русский (месяцы, дни недели и т.д.)
-                editable: true,  // Перетаскивание событий
-                selectable: true,  // Выбор даты для создания
-                events: '{{ url_for('requests.api_events') }}',  // Данные из API
+                locale: 'ru',
+                firstDay: 1,
+                editable: true,
+                selectable: true,
+                displayEventTime: true,
+                slotEventOverlap: true,
+                eventMinHeight: 22,
+                slotDuration: '00:30:00',
+                slotLabelInterval: '01:00',
+                /* В режиме «Месяц» иначе заявки с временем рисуются как едва заметные линии */
+                views: {
+                    dayGridMonth: {
+                        eventDisplay: 'block',
+                        /* false = показывать все заявки в ячейке; иначе часть уходит в «+N ещё» и визуально теряется */
+                        dayMaxEvents: false,
+                        moreLinkClick: 'day'
+                    }
+                },
+                eventSources: [
+                    '{{ url_for("requests.api_events") }}',
+                    {
+                        url: shiftBgUrl,
+                        extraParams: function() {
+                            var el = document.getElementById('fcLayerShift');
+                            var params = { show: el && el.checked ? '1' : '0' };
+                            var qs = new URLSearchParams(window.location.search || '');
+                            var w = qs.get('worker_id');
+                            if (w && w !== 'all') params.worker_id = w;
+                            return params;
+                        }
+                    }
+                ],
                 eventDrop: function(info) {
-                    // Обновление даты через API
-                    fetch('{{ url_for('requests.api_update_event') }}', {
+                    if (!info.event.extendedProps || info.event.extendedProps.layer !== 'request') {
+                        info.revert();
+                        return;
+                    }
+                    fetch('{{ url_for("requests.api_update_event") }}', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ id: info.event.id, start: info.event.start.toISOString() })
                     });
                 },
                 eventClick: function(info) {
-                    // Клик на событие - открыть редактирование
-                    window.location.href = '{{ url_for('requests.edit_request', id=0) }}'.replace('0', info.event.id);
+                    info.jsEvent.preventDefault();
+                    if (info.event.extendedProps && info.event.extendedProps.layer === 'shift') {
+                        return;
+                    }
+                    if (!bsModal) return;
+                    modalBody.innerHTML = '<p class="text-muted mb-0">Загрузка…</p>';
+                    bsModal.show();
+                    fetch(summaryUrl(info.event.id))
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            if (data.error) {
+                                modalBody.innerHTML = '<p class="text-danger">Нет доступа</p>';
+                                return;
+                            }
+                            fillModal(data);
+                        })
+                        .catch(function() {
+                            modalBody.innerHTML = '<p class="text-danger">Ошибка загрузки</p>';
+                        });
                 },
                 select: function(info) {
-                    // Клик на день/время - создать новую с датой
-                    window.location.href = '{{ url_for('requests.add_request') }}?planned_date=' + info.start.toISOString().split('T')[0];
+                    window.location.href = '{{ url_for("requests.add_request") }}?planned_date=' + info.start.toISOString().split('T')[0];
                 },
-                eventTimeFormat: { hour: '2-digit', minute: '2-digit' },  // Формат времени
-                slotMinTime: '08:00:00',  // Начало дня
-                slotMaxTime: '20:00:00',  // Конец дня
-                height: 'auto',  // Авто-высота
-                allDaySlot: false  // Без all-day слота для фокуса на времени
+                eventTimeFormat: { hour: '2-digit', minute: '2-digit' },
+                slotMinTime: '08:00:00',
+                slotMaxTime: '20:00:00',
+                height: 'auto',
+                allDaySlot: false,
+                eventContent: function(arg) {
+                    var v = arg.view.type;
+                    if (v === 'timeGridWeek' || v === 'timeGridDay') {
+                        var time = arg.timeText || '';
+                        var title = (arg.event.title || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                        return { html: '<div class="fc-cal-compact" title="' + title + '">' + time + '</div>' };
+                    }
+                    if (v === 'dayGridMonth') {
+                        var bg = arg.event.backgroundColor || arg.event.borderColor || '#6c757d';
+                        var fg = arg.event.textColor || '#ffffff';
+                        var timeM = (arg.timeText || '').replace(/</g, '&lt;');
+                        var titleM = (arg.event.title || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                        return {
+                            html: '<div class="fc-month-chip" style="background-color:' + bg + ';color:' + fg + ';border:1px solid ' + bg + ';">' +
+                                '<span class="fc-event-time">' + timeM + '</span> ' +
+                                '<span class="fc-event-title fc-month-title">' + titleM + '</span></div>'
+                        };
+                    }
+                    return undefined;
+                }
             });
             calendar.render();
+            var fcLayerShift = document.getElementById('fcLayerShift');
+            if (fcLayerShift) {
+                fcLayerShift.addEventListener('change', function() {
+                    calendar.refetchEvents();
+                });
+            }
         });
     </script>
 {% endblock %}
 
 {% block extra_css %}
-    <!-- Стили для FullCalendar в стиле Hyper (светлый фон, цветные полосы событий с временем, акценты синие/зелёные/красные) -->
     <style>
         #calendar { max-width: 100%; margin: 0 auto; background: #fff; border: 1px solid #e0e0e0; border-radius: 0.5rem; padding: 1rem; }
-        .fc-toolbar { background: #f8f9fa; border-bottom: 1px solid #e0e0e0; padding: 10px; font-size: 1.1em; }
-        .fc-button { background: #007bff; color: #fff; border: none; border-radius: 5px; padding: 8px 15px; margin: 0 5px; }
-        .fc-button:hover { background: #0056b3; }
-        .fc-event { background: linear-gradient(to right, #007bff 0%, #007bff 20%, #f8f9fa 20%, #f8f9fa 100%); color: #333; border: none; border-radius: 5px; padding: 5px; font-size: 0.9em; display: flex; align-items: center; }
-        .fc-event.fc-event-past { opacity: 0.6; }
-        .fc-event .fc-event-time { background: #007bff; color: #fff; padding: 2px 5px; border-radius: 5px 0 0 5px; margin-right: 10px; }
-        .fc-event .fc-event-title { flex: 1; }
-        .fc-daygrid-day-frame { min-height: 120px; background: #fff; }
-        .fc-timegrid-slot { height: 2em; }
+        .fc-toolbar { background: #f8f9fa; border-bottom: 1px solid #e0e0e0; padding: 10px; font-size: 1.05em; flex-wrap: wrap; gap: 0.25rem; }
+        .fc-button { background: #0d6efd; color: #fff; border: none; border-radius: 5px; padding: 6px 12px; margin: 0 2px; font-size: 0.9rem; }
+        .fc-button:hover { background: #0b5ed7; color: #fff; }
+        /* Компактные полосы: только время в сетке, без «наезда» текста */
+        .fc-timegrid-event { border-radius: 3px; overflow: hidden; margin-bottom: 1px !important; }
+        .fc-timegrid-event .fc-event-main { padding: 0 3px; overflow: hidden; }
+        .fc-cal-compact {
+            font-size: 0.65rem;
+            line-height: 1.2;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+        .fc-timegrid-slot { height: 2.25em; }
+        .fc-timegrid-col-events .fc-timegrid-event-harness-inset { margin: 0 1px; }
         .fc-col-header-cell { background: #f8f9fa; border-bottom: 1px solid #e0e0e0; }
-        /* Цвета по статусу */
-        .fc-event[data-status="overdue"] { background: linear-gradient(to right, #dc3545 0%, #dc3545 20%, #f8f9fa 20%, #f8f9fa 100%); }
-        .fc-event[data-status="closed"] { background: linear-gradient(to right, #28a745 0%, #28a745 20%, #f8f9fa 20%, #f8f9fa 100%); }
-        .fc-event[data-status="assigned"] { background: linear-gradient(to right, #007bff 0%, #007bff 20%, #f8f9fa 20%, #f8f9fa 100%); }
-        .tab-btn { padding: 10px 20px; margin-right: 10px; border-radius: 5px; text-decoration: none; }
-        .tab-active { background: #007BFF; color: white; }
-        .tab-inactive { background: #CCC; color: black; }
+        .fc-daygrid-day-frame { min-height: 120px; background: #fff; }
+        /* Глобально border:none только у сетки времени — в месяце оставляем читаемые блоки */
+        .fc-timegrid .fc-event { border: none; font-size: 0.75rem; }
+        .fc-daygrid .fc-daygrid-event.fc-event {
+            min-height: 1.75em !important;
+            padding: 0 !important;
+            margin-bottom: 4px !important;
+            font-size: 0.78rem !important;
+            line-height: 1.35 !important;
+            display: block !important;
+            border-radius: 4px;
+            box-sizing: border-box;
+            border: none !important;
+            background: transparent !important;
+            opacity: 1 !important;
+        }
+        .fc-daygrid .fc-daygrid-event .fc-event-main {
+            overflow: visible;
+            padding: 0;
+        }
+        .fc-daygrid .fc-month-chip {
+            padding: 4px 6px;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .fc-daygrid .fc-month-chip .fc-event-time {
+            font-weight: 600;
+            opacity: 0.95;
+        }
+        .fc-daygrid .fc-month-title {
+            font-weight: 500;
+        }
+        .fc-event.fc-event-past { opacity: 0.65; }
+        #requestCalendarModal .modal-body dl { font-size: 0.95rem; }
     </style>
 {% endblock %}

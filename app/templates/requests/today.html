@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/client_picker.html' import client_picker %}
 {% block title %}Заявки сегодня{% endblock %}
 
 {% block tabs %}
@@ -22,7 +23,7 @@
     <div>
         <a href="{{ url_for('requests.today_requests', filter_type='today') }}">Сегодня</a>
         <a href="{{ url_for('requests.today_requests', filter_type='all') }}">Все</a>
-        <a href="{{ url_for('requests.today_requests', filter_type='overdue') }}">Просроченные {% if overdue_count > 0 %}({{ overdue_count }}){% endif %}</a>
+        <a href="{{ url_for('requests.today_requests', filter_type='overdue') }}">Просроченные</a>
         <a href="{{ url_for('requests.today_requests', filter_type='specific_date') }}">По дате</a>
     </div>
 
@@ -33,17 +34,12 @@
             <input type="date" name="specific_date" value="{{ request.args.get('specific_date', '') }}">
         </div>
         {% endif %}
-        
-        <div>
-            <label>Клиент:</label>
-            <select name="client_id">
-                <option value="all">Все</option>
-                {% for client in clients %}
-                    <option value="{{ client.id }}" {% if request.args.get('client_id') == client.id|string %}selected{% endif %}>{{ client.full_name }}</option>
-                {% endfor %}
-            </select>
+
+        <div class="mb-2">
+            <label class="form-label small">Клиент</label>
+            {{ client_picker('client_id', 'today_filter', hidden_value=today_client_id|default('all'), initial_display=today_client_label|default(''), show_kind=True, allow_all='all') }}
         </div>
-        
+
         <div>
             <label>Исполнитель:</label>
             <select name="worker_id">
@@ -53,7 +49,7 @@
                 {% endfor %}
             </select>
         </div>
-        
+
         <div>
             <label>Тип заявки:</label>
             <select name="service_type">
@@ -68,10 +64,9 @@
             <label>Статус:</label>
             <select name="status">
                 <option value="all" {% if request.args.get('status') == 'all' %}selected{% endif %}>Все</option>
-                <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>Ожидает</option>
                 <option value="assigned" {% if request.args.get('status') == 'assigned' %}selected{% endif %}>Назначена</option>
                 <option value="closed" {% if request.args.get('status') == 'closed' %}selected{% endif %}>Закрыта</option>
-                <option value="overdue" {% if request.args.get('status') == 'overdue' %}selected{% endif %}>Просрочена</option>
+                <option value="cancelled" {% if request.args.get('status') == 'cancelled' %}selected{% endif %}>Отменена</option>
             </select>
         </div>
 
@@ -111,10 +106,9 @@
                     <th>Плановая дата</th>
                     <th>Исполнитель</th>
                     <th>Оборудование</th>
-                    <th>Срочная цена</th>
                     <th>Сумма по регламенту</th>
                     <th>Стоимость материалов</th>
-                    <th>Общая сумма</th>
+                    <th>Цена</th>
                     <th>Договор</th>
                     <th>Комментарий</th>
                     <th>Действия</th>
@@ -138,15 +132,14 @@
                     <td>{{ req.planned_date.strftime('%Y-%m-%d') if req.planned_date else '' }}</td>
                     <td>{% for w in req.workers %}{{ w.full_name }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
                     <td>{{ req.equipment.serial_number if req.equipment else '' }} {% if req.equipment and req.equipment.model %}({{ req.equipment.model }}){% endif %}</td>
-                    <td>{{ req.urgent_price or 0 }}</td>
                     <td>{{ req.contract_regulated_price or 0 }}</td>
                     <td>{{ req.materials_cost or 0 }}</td>
-                    <td>{{ req.total_price or 0 }}</td>
+                    <td>{{ req.urgent_price or req.total_price or 0 }}</td>
                     <td>{{ req.contract.contract_number if req.contract else '' }}</td>
                     <td>{{ req.comment or '' }}</td>
                     <td>
-                        <a href="{{ url_for('requests.view_request', id=req.id) }}">Просмотреть</a>
-                        <a href="{{ url_for('requests.edit_request', id=req.id) }}">Редактировать</a>
+                        <a href="{{ url_for('requests.view_request', id=req.id, next=request.full_path) }}">Просмотреть</a>
+                        <a href="{{ url_for('requests.edit_request', id=req.id, next=request.full_path) }}">Редактировать</a>
                         <a href="{{ url_for('requests.create_work_order', id=req.id) }}">Создать наряд</a>
                     </td>
                 </tr>

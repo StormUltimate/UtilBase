@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/client_picker.html' import client_picker %}
 {% block title %}Создать заявку{% endblock %}
 
 {% block tabs %}
@@ -51,10 +52,9 @@
             <div class="wizard-step" id="step1">
                 <h5 class="mb-3"><i class="bi bi-person-fill text-primary"></i> Клиент</h5>
                 <div class="mb-3">
-                    <label class="form-label">Поиск клиента</label>
-                    <input type="text" class="form-control" id="client_search" placeholder="Начните вводить ФИО, телефон или адрес..." autocomplete="off">
-                    <div id="client_results" class="list-group mt-1" style="display:none; max-height:200px; overflow-y:auto;"></div>
-                    <input type="hidden" name="client_id" id="client_id" value="{{ form.client_id.data or 0 }}">
+                    <label class="form-label">Клиент</label>
+                    {{ client_picker('client_id', 'add_req_wizard', hidden_value=form.client_id.data or 0, initial_display='', show_kind=True) }}
+                    <div class="form-text small">Поиск по ФИО, телефону и адресу (как в списке клиентов). Можно сузить по виду клиента.</div>
                 </div>
                 <div class="row g-2">
                     <div class="col-md-6">
@@ -82,6 +82,10 @@
                 <div class="mb-3">
                     <label class="form-label">{{ form.type.label.text }}</label>
                     {{ form.type(class="form-select") }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">{{ form.visit_type.label.text }}</label>
+                    {{ form.visit_type(class="form-select") }}
                 </div>
                 <div class="mb-3">
                     <label class="form-label">{{ form.service_type.label.text }}</label>
@@ -116,12 +120,8 @@
                         <small class="text-muted d-block mt-1">Выбрано исполнителей: <span id="workersCountText"></span></small>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">{{ form.urgent_price.label.text }}</label>
-                        {{ form.urgent_price(class="form-control", type="number", step="0.01") }}
-                    </div>
-                    <div class="col-md-6">
                         <label class="form-label">{{ form.total_price.label.text }}</label>
-                        {{ form.total_price(class="form-control", type="number", step="0.01") }}
+                        {{ form.total_price(class="form-control", type="number", step="0.01", placeholder="0") }}
                     </div>
                     <div class="col-12">
                         <label class="form-label">{{ form.comment.label.text }}</label>
@@ -147,7 +147,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
 (function() {
     var step = 1;
@@ -173,48 +172,19 @@
         if (step > 1) showStep(step - 1);
     };
 
-    // Client search autocomplete
-    var clientSearch = document.getElementById('client_search');
-    var clientResults = document.getElementById('client_results');
-    var clientIdInput = document.getElementById('client_id');
-    var debounce;
-    if (clientSearch && clientResults) {
-        clientSearch.addEventListener('input', function() {
-            clearTimeout(debounce);
-            var q = this.value.trim();
-            if (q.length < 2) { clientResults.style.display = 'none'; return; }
-            debounce = setTimeout(function() {
-                fetch('{{ url_for("requests.search_clients") }}?query=' + encodeURIComponent(q))
-                    .then(function(r) { return r.json(); })
-                    .then(function(data) {
-                        clientResults.innerHTML = '';
-                        if (data.results && data.results.length) {
-                            data.results.forEach(function(item) {
-                                var a = document.createElement('a');
-                                a.href = '#';
-                                a.className = 'list-group-item list-group-item-action';
-                                a.textContent = item.text;
-                                a.onclick = function(e) {
-                                    e.preventDefault();
-                                    clientIdInput.value = item.id;
-                                    clientSearch.value = item.text;
-                                    clientResults.style.display = 'none';
-                                    fetch('{{ url_for("requests.get_client", id=0) }}'.replace('0', item.id))
-                                        .then(function(r) { return r.json(); })
-                                        .then(function(d) {
-                                            if (d.full_name) document.getElementById('full_name').value = d.full_name;
-                                            if (d.address) document.getElementById('address').value = d.address;
-                                            if (d.phone) document.getElementById('phone').value = d.phone || '';
-                                        });
-                                };
-                                clientResults.appendChild(a);
-                            });
-                            clientResults.style.display = 'block';
-                        } else { clientResults.style.display = 'none'; }
-                    });
-            }, 300);
+    var hid = document.querySelector('#cp_add_req_wizard .client-picker-hidden');
+    if (hid) {
+        hid.addEventListener('change', function() {
+            var id = this.value;
+            if (!id || id === '0') return;
+            fetch('{{ url_for("requests.get_client", id=999888) }}'.replace('999888', String(id)))
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.full_name) document.getElementById('full_name').value = d.full_name;
+                    if (d.address) document.getElementById('address').value = d.address;
+                    if (d.phone) document.getElementById('phone').value = d.phone || '';
+                });
         });
-        document.addEventListener('click', function() { clientResults.style.display = 'none'; });
     }
 
     // Подсчёт выбранных исполнителей

@@ -1,0 +1,15 @@
+<div class="schedule-timeline-wrap border rounded bg-white shadow-sm overflow-hidden" id="schedule-timeline-wrap">
+    <div class="schedule-loading text-center py-5 text-muted d-none" id="schedule-loading" role="status">
+        <div class="spinner-border spinner-border-sm me-2" aria-hidden="true"></div> Загрузка…
+    </div>
+    <div id="schedule-root"
+         class="schedule-root"
+         tabindex="0"
+         data-data-url="{{ url_for('schedule.api_data') }}"
+         data-assign-url="{{ url_for('schedule.api_assign') }}"
+         data-anchor="{{ anchor_date }}"
+         data-view="{{ view_mode }}"
+         data-can-assign="true"
+         aria-label="Таймлайн заявок">
+    </div>
+</div>

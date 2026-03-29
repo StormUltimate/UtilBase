@@ -1,5 +1,12 @@
+:root {
+    --ub-form-surface: #d4e8e4;
+    --ub-form-surface-border: #a8c9c2;
+    --ub-input-bg: #ffffff;
+    --ub-input-border: #7aa89f;
+}
+
 body {
-    background-color: #f8f9fa;
+    background-color: #e8f2f0;
     font-family: 'Nunito', sans-serif;
 }
 
@@ -10,7 +17,11 @@ body {
     position: fixed;
     width: 250px;
     padding: 20px;
+    padding-bottom: 28px;
     z-index: 1030;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
 }
 
 .sidebar h4 {
@@ -66,8 +77,8 @@ body {
 }
 
 .topbar {
-    background-color: white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    background-color: #eef6f4;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     padding: 12px 24px;
     display: flex;
     justify-content: space-between;
@@ -86,10 +97,145 @@ body {
     min-height: 100vh;
 }
 
+/* Основная область страницы — фон как у холста, без белой «простыни» */
+.content-panel {
+    background: transparent;
+    border-radius: 12px;
+}
+
+/*
+ * Формы: фон блока — тонированный; белым остаются только поля ввода (.form-control / .form-select).
+ */
+.content-panel > form[method="post"]:not(.card) {
+    background-color: var(--ub-form-surface);
+    border: 1px solid var(--ub-form-surface-border);
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Поля ввода поверх тонированного фона — белые с видимой рамкой */
+.content-panel > form[method="post"]:not(.card) .form-control,
+.content-panel > form[method="post"]:not(.card) .form-select,
+form.card .form-control,
+form.card .form-select,
+.content-panel .card:has(form) .form-control,
+.content-panel .card:has(form) .form-select {
+    background-color: var(--ub-input-bg);
+    border: 1px solid var(--ub-input-border);
+    color: #212529;
+}
+
+.content-panel > form[method="post"]:not(.card) .form-control:focus,
+.content-panel > form[method="post"]:not(.card) .form-select:focus,
+form.card .form-control:focus,
+form.card .form-select:focus,
+.content-panel .card:has(form) .form-control:focus,
+.content-panel .card:has(form) .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.18);
+    background-color: var(--ub-input-bg);
+}
+
+.content-panel > form[method="post"]:not(.card) .form-label,
+form.card .form-label,
+.content-panel .card:has(form) .form-label {
+    color: #1a2f2c;
+    font-weight: 600;
+}
+
+/* GET-формы (поиск и т.п.): тот же принцип — фон блока тонирован, поле — белое */
+.content-panel > form[method="get"]:not(.card) {
+    background-color: var(--ub-form-surface);
+    border: 1px solid var(--ub-form-surface-border);
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.content-panel > form[method="get"]:not(.card) .form-control,
+.content-panel > form[method="get"]:not(.card) .form-select {
+    background-color: var(--ub-input-bg);
+    border: 1px solid var(--ub-input-border);
+}
+
+/* form.card (напр. редактирование клиента): фон формы — не белый */
+form.card.card-body {
+    background-color: var(--ub-form-surface) !important;
+    border: 1px solid var(--ub-form-surface-border) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Карточка с формой внутри (мастер создания заявки, фильтры с полями) */
+.content-panel .card:has(form) {
+    background-color: var(--ub-form-surface);
+    border: 1px solid var(--ub-form-surface-border);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+.content-panel .card:has(form) .card-header {
+    background-color: rgba(255, 255, 255, 0.45);
+    border-bottom: 1px solid var(--ub-form-surface-border);
+}
+
+.content-panel .card:has(form) .card-body {
+    background-color: transparent;
+}
+
 .card {
     border: none;
     box-shadow: 0 2px 12px rgba(0,0,0,0.08);
     border-radius: 12px;
+    background-color: #ffffff;
+}
+
+/* Модальное окно: тонированная оболочка; белые — только поля внутри тела */
+.modal-content {
+    background-color: #e8f2f0;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.modal-dialog-scrollable .modal-content {
+    /* На небольших экранах не даём модалке уходить ниже viewport */
+    max-height: calc(100vh - 2rem);
+}
+
+.modal-dialog-scrollable .modal-body {
+    /* Иногда кастомные отступы/обводки сбивают встроенный скролл Bootstrap */
+    overflow-y: auto;
+}
+
+.modal-header {
+    background-color: transparent;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.modal-body {
+    background-color: var(--ub-form-surface);
+    border: 1px solid var(--ub-form-surface-border);
+    border-radius: 10px;
+    margin: 0 0.75rem 0.75rem;
+    padding: 1.25rem;
+}
+
+.modal-body .form-control,
+.modal-body .form-select {
+    background-color: var(--ub-input-bg);
+    border: 1px solid var(--ub-input-border);
+}
+
+.modal-body .form-control:focus,
+.modal-body .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.18);
+    background-color: var(--ub-input-bg);
+}
+
+.modal-footer {
+    background-color: transparent;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 /* Таблицы: полоски, hover, responsive */

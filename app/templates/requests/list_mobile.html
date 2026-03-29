@@ -9,17 +9,33 @@
     </ol>
 </nav>
 
+<div class="d-flex align-items-center gap-2 mb-2">
+    <span class="badge bg-secondary">Всего: {{ total_requests }}</span>
+    <span class="badge bg-primary">По фильтру: {{ filtered_requests }}</span>
+</div>
+
 {# Фильтр #}
 <div class="card mb-3">
     <div class="card-body py-2">
-        <form method="get" class="d-flex gap-2">
+        <form method="get" class="d-flex flex-column gap-2">
             <select name="filter" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="all" {% if filter == 'all' %}selected{% endif %}>Все</option>
+                <option value="all" {% if filter == 'all' %}selected{% endif %}>Активные (без закрытых)</option>
                 <option value="today" {% if filter == 'today' %}selected{% endif %}>Сегодня</option>
                 <option value="planned" {% if filter == 'planned' %}selected{% endif %}>Планируемые</option>
                 <option value="overdue" {% if filter == 'overdue' %}selected{% endif %}>Просроченные</option>
+                <option value="closed" {% if filter == 'closed' %}selected{% endif %}>Закрытые</option>
+                <option value="cancelled" {% if filter == 'cancelled' %}selected{% endif %}>Отменённые</option>
+                <option value="everything" {% if filter == 'everything' %}selected{% endif %}>Все (включая закрытые)</option>
             </select>
         </form>
+        <div class="d-flex gap-2 mt-2">
+            <a href="{{ url_for('requests.list_requests', filter='overdue') }}" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-funnel-fill"></i> Просроченные
+            </a>
+            <a href="{{ url_for('requests.list_requests', type='emergency') }}" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-exclamation-triangle"></i> Аварийные
+            </a>
+        </div>
     </div>
 </div>
 
@@ -43,8 +59,10 @@
                 <p class="card-text small mb-1">{{ client_name }}</p>
                 <p class="card-text small text-muted mb-2">{{ (req.description or '—')|truncate(50) }}</p>
                 <div class="d-flex justify-content-between align-items-center">
-                    <span class="badge bg-{{ 'success' if (req.status.value if req.status else '') == 'closed' else 'danger' if (req.status.value if req.status else '') == 'overdue' else 'secondary' }}">
-                        {{ req.status.value if req.status else '—' }}
+                    {% set st = req.status.value if req.status else '' %}
+                    {% set st_label = 'Назначена' if st in ('pending', 'assigned') else ('Просрочена' if st == 'overdue' else ('Закрыта' if st == 'closed' else ('Отменена' if st == 'cancelled' else (st or '—')))) %}
+                    <span class="badge bg-{{ 'success' if st == 'closed' else 'danger' if st == 'overdue' else 'dark' if st == 'cancelled' else 'warning' if st in ('pending', 'assigned') else 'secondary' }}">
+                        {{ st_label }}
                     </span>
                     <span class="small text-muted">{{ req.planned_date.strftime('%d.%m') if req.planned_date else '—' }}</span>
                 </div>

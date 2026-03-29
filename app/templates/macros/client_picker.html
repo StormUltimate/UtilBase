@@ -1,0 +1,27 @@
+{# Подбор клиента: поиск по ФИО / телефону / адресу; опционально фильтр по виду. #}
+{% macro client_picker(field_name, uid, hidden_value='', initial_display='', show_kind=True, placeholder='Начните ввод: ФИО, телефон или адрес…', allow_all='') %}
+<div class="client-picker mb-2 position-relative" id="cp_{{ uid }}"
+     data-api="{{ url_for('clients.api_search_clients') }}"
+     {% if allow_all %}data-allow-all="{{ allow_all }}"{% endif %}>
+    {% if show_kind %}
+    <select class="form-select form-select-sm client-picker-kind mb-2" aria-label="Вид клиента (фильтр поиска)">
+        <option value="">Все виды</option>
+        <option value="__none__">Без вида</option>
+        <option value="individual">Физ. лицо</option>
+        <option value="legal_entity">Юр. лицо</option>
+        <option value="commercial_household">Комбыт</option>
+        <option value="government">Госучреждение</option>
+    </select>
+    {% endif %}
+    <input type="hidden" name="{{ field_name }}" class="client-picker-hidden" value="{{ hidden_value }}">
+    <div class="d-flex gap-1 align-items-start flex-wrap">
+        <input type="search" class="form-control form-control-sm client-picker-input flex-grow-1" autocomplete="off"
+               placeholder="{{ placeholder }}" value="{{ initial_display }}">
+        {% if allow_all %}
+        <button type="button" class="btn btn-outline-secondary btn-sm client-picker-clear-all text-nowrap">Все</button>
+        {% endif %}
+    </div>
+    <div class="client-picker-dropdown list-group position-absolute w-100 shadow-sm mt-1 border rounded"
+         style="display:none; z-index: 1080; max-height: 260px; overflow-y: auto;"></div>
+</div>
+{% endmacro %}

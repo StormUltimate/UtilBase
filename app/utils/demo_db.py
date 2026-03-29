@@ -1,26 +1,39 @@
 # Path: app/utils/demo_db.py
 """Создание и удаление тестовых (демо) данных в БД."""
+
 import os
-from datetime import datetime, date, timedelta, time
+from datetime import date, datetime, time, timedelta
 
 from app.extensions import db
 from app.models.all_models import (
+    ChatMessage,
+    ChatParticipant,
+    ChatThread,
     Client,
     Contract,
-    Request,
-    Worker,
-    Media,
-    request_workers,
-    WorkOrder,
     Equipment,
+    EquipmentTemplate,
+    Media,
+    Request,
+    RequestActionLog,
+    RequestChecklistAnswer,
+    RequestClientOperation,
+    RequestItem,
+    RequestMode,
+    RequestPayment,
+    RequestStatus,
+    ServiceType,
+    Worker,
+    WorkOrder,
+    request_workers,
 )
-from app.models.all_models import ServiceType, RequestStatus, RequestMode
-
 
 DEMO_CLIENT_PREFIX = "Демо Клиент"
 DEMO_WORKER_PREFIX = "Демо "
 DEMO_REQUEST_PREFIX = "DEMO:"
 DEMO_MEDIA_DESCRIPTION_PREFIX = "Демо: "
+DEMO_EQUIPMENT_SERIAL_PREFIX = "DEMO-EQ-"
+DEMO_TEMPLATE_SERIAL_PREFIX = "DEMO-TPL-"
 
 # Путь-заглушка для демо-фото (файла нет на диске — при просмотре будет редирект «Файл не найден»)
 DEMO_MEDIA_PLACEHOLDER_PATH = "uploads/demo/placeholder.png"
@@ -52,8 +65,12 @@ def create_demo_data(app=None):
     existing_workers = Worker.query.filter(Worker.full_name.like(f"{DEMO_WORKER_PREFIX}%")).all()
     if not existing_workers:
         for i, role in enumerate(["master", "master", "engineer"], 1):
-            name = f"{DEMO_WORKER_PREFIX}мастер {i}" if role != "engineer" else f"{DEMO_WORKER_PREFIX}инженер"
-            w = Worker(full_name=name, phone=f"+7 900 000-00-0{i}", role=role)
+            name = (
+                f"{DEMO_WORKER_PREFIX}мастер {i}"
+                if role != "engineer"
+                else f"{DEMO_WORKER_PREFIX}инженер"
+            )
+            w = Worker(full_name=name, phone=f"+7 900 000-00-0{i}", role=role, is_active=True)
             db.session.add(w)
         db.session.flush()
         demo_workers = Worker.query.filter(Worker.full_name.like(f"{DEMO_WORKER_PREFIX}%")).all()
@@ -93,7 +110,110 @@ def create_demo_data(app=None):
                 db.session.add(contract)
     db.session.flush()
 
-    # 4) Заявки: часть закрытых, часть в работе
+    # 4) Шаблоны оборудования (пул, котел, насосы)
+    existing_templates = EquipmentTemplate.query.filter(
+        EquipmentTemplate.serial_number.like(f"{DEMO_TEMPLATE_SERIAL_PREFIX}%")
+    ).all()
+    if not existing_templates:
+        pool_template = EquipmentTemplate(
+            serial_number=f"{DEMO_TEMPLATE_SERIAL_PREFIX}POOL-001",
+            type="Бассейн",
+            kind="Водоем",
+            brand="DemoPool",
+            model="Pool Base",
+            power=None,
+        )
+        boiler_template = EquipmentTemplate(
+            serial_number=f"{DEMO_TEMPLATE_SERIAL_PREFIX}BOILER-001",
+            type="Котел",
+            kind="Отопление",
+            brand="DemoHeat",
+            model="Boiler Base",
+            power=24.0,
+        )
+        db.session.add(pool_template)
+        db.session.add(boiler_template)
+        db.session.flush()
+
+        pool_pump_template = EquipmentTemplate(
+            serial_number=f"{DEMO_TEMPLATE_SERIAL_PREFIX}PUMP-POOL-001",
+            type="Насос",
+            kind="Циркуляционный",
+            brand="DemoPump",
+            model="Pool Pump",
+            power=1.5,
+            parent_id=pool_template.id,
+        )
+        boiler_pump_template = EquipmentTemplate(
+            serial_number=f"{DEMO_TEMPLATE_SERIAL_PREFIX}PUMP-BOILER-001",
+            type="Насос",
+            kind="Циркуляционный",
+            brand="DemoPump",
+            model="Boiler Pump",
+            power=1.0,
+            parent_id=boiler_template.id,
+        )
+        db.session.add(pool_pump_template)
+        db.session.add(boiler_pump_template)
+        db.session.flush()
+
+    # 5) Демо-оборудование с иерархией по каждому демо-клиенту
+    for client in demo_clients:
+        existing_root = Equipment.query.filter(
+            Equipment.client_id == client.id,
+            Equipment.serial_number.like(f"{DEMO_EQUIPMENT_SERIAL_PREFIX}%"),
+            Equipment.parent_id.is_(None),
+        ).first()
+        if existing_root:
+            continue
+
+        pool = Equipment(
+            client_id=client.id,
+            serial_number=f"{DEMO_EQUIPMENT_SERIAL_PREFIX}{client.id}-POOL",
+            type="Бассейн",
+            kind="Водоем",
+            brand="DemoPool",
+            model="Pool Base",
+            power=None,
+        )
+        boiler = Equipment(
+            client_id=client.id,
+            serial_number=f"{DEMO_EQUIPMENT_SERIAL_PREFIX}{client.id}-BOILER",
+            type="Котел",
+            kind="Отопление",
+            brand="DemoHeat",
+            model="Boiler Base",
+            power=24.0,
+        )
+        db.session.add(pool)
+        db.session.add(boiler)
+        db.session.flush()
+
+        pool_pump = Equipment(
+            client_id=client.id,
+            parent_id=pool.id,
+            serial_number=f"{DEMO_EQUIPMENT_SERIAL_PREFIX}{client.id}-POOL-PUMP",
+            type="Насос",
+            kind="Циркуляционный",
+            brand="DemoPump",
+            model="Pool Pump",
+            power=1.5,
+        )
+        boiler_pump = Equipment(
+            client_id=client.id,
+            parent_id=boiler.id,
+            serial_number=f"{DEMO_EQUIPMENT_SERIAL_PREFIX}{client.id}-BOILER-PUMP",
+            type="Насос",
+            kind="Циркуляционный",
+            brand="DemoPump",
+            model="Boiler Pump",
+            power=1.0,
+        )
+        db.session.add(pool_pump)
+        db.session.add(boiler_pump)
+    db.session.flush()
+
+    # 6) Заявки: часть закрытых, часть в работе
     today = date.today()
     start_day = today - timedelta(days=14)
     end_day = today + timedelta(days=14)
@@ -108,7 +228,7 @@ def create_demo_data(app=None):
             for slot in (0, 1):
                 status = RequestStatus.closed if day_offset < 0 else RequestStatus.assigned
                 if day_offset == 0 and slot == 1:
-                    status = RequestStatus.pending
+                    status = RequestStatus.assigned
                 planned_start = datetime.combine(planned_date, time(9 + slot * 3, 0))
                 planned_end = planned_start + timedelta(hours=2)
                 service_type = ServiceType.emergency if req_num % 3 == 1 else ServiceType.standard
@@ -141,7 +261,7 @@ def create_demo_data(app=None):
                 req_num += 1
     db.session.flush()
 
-    # 5) Пустые записи медиа (без реальных файлов — путь-заглушка)
+    # 7) Пустые записи медиа (без реальных файлов — путь-заглушка)
     for client in demo_clients[:2]:
         for idx in range(1, 3):
             m = Media(
@@ -157,7 +277,7 @@ def create_demo_data(app=None):
 
 def delete_demo_data():
     """Удаляет все демо-данные: клиенты, договоры, заявки, исполнители, демо-медиа."""
-    from sqlalchemy import text, or_
+    from sqlalchemy import or_, text
 
     demo_clients = Client.query.filter(Client.full_name.like(f"{DEMO_CLIENT_PREFIX}%")).all()
     demo_client_ids = [c.id for c in demo_clients]
@@ -180,11 +300,52 @@ def delete_demo_data():
 
     # Наряды по демо-заявкам
     if demo_request_ids:
-        WorkOrder.query.filter(WorkOrder.request_id.in_(demo_request_ids)).delete(synchronize_session=False)
+        WorkOrder.query.filter(WorkOrder.request_id.in_(demo_request_ids)).delete(
+            synchronize_session=False
+        )
 
-    # Заявки
-    for r in demo_requests:
-        db.session.delete(r)
+    # Журнал действий/идемпотентность/связанные сущности заявок удаляем заранее, чтобы не было NULL в FK
+    if demo_request_ids:
+        # Медиа могут ссылаться на заявки (FK media.request_id -> requests.id), поэтому сначала отвязываем
+        Media.query.filter(Media.request_id.in_(demo_request_ids)).update(
+            {Media.request_id: None},
+            synchronize_session=False,
+        )
+
+        RequestActionLog.query.filter(RequestActionLog.request_id.in_(demo_request_ids)).delete(
+            synchronize_session=False
+        )
+        RequestClientOperation.query.filter(
+            RequestClientOperation.request_id.in_(demo_request_ids)
+        ).delete(synchronize_session=False)
+        RequestChecklistAnswer.query.filter(
+            RequestChecklistAnswer.request_id.in_(demo_request_ids)
+        ).delete(synchronize_session=False)
+        RequestItem.query.filter(RequestItem.request_id.in_(demo_request_ids)).delete(
+            synchronize_session=False
+        )
+        RequestPayment.query.filter(RequestPayment.request_id.in_(demo_request_ids)).delete(
+            synchronize_session=False
+        )
+
+        # Чат по заявкам
+        thread_ids = [
+            x[0]
+            for x in db.session.query(ChatThread.id)
+            .filter(ChatThread.request_id.in_(demo_request_ids))
+            .all()
+        ]
+        if thread_ids:
+            ChatParticipant.query.filter(ChatParticipant.thread_id.in_(thread_ids)).delete(
+                synchronize_session=False
+            )
+            ChatMessage.query.filter(ChatMessage.thread_id.in_(thread_ids)).delete(
+                synchronize_session=False
+            )
+            ChatThread.query.filter(ChatThread.id.in_(thread_ids)).delete(synchronize_session=False)
+
+        # Заявки bulk-delete (без session.delete поштучно)
+        Request.query.filter(Request.id.in_(demo_request_ids)).delete(synchronize_session=False)
 
     # Медиа демо
     demo_media = Media.query.filter(
@@ -197,13 +358,28 @@ def delete_demo_data():
         db.session.delete(m)
 
     if demo_client_ids:
-        WorkOrder.query.filter(WorkOrder.client_id.in_(demo_client_ids)).delete(synchronize_session=False)
-        Equipment.query.filter(Equipment.client_id.in_(demo_client_ids)).delete(synchronize_session=False)
-        Contract.query.filter(Contract.client_id.in_(demo_client_ids)).delete(synchronize_session=False)
+        WorkOrder.query.filter(WorkOrder.client_id.in_(demo_client_ids)).delete(
+            synchronize_session=False
+        )
+        Equipment.query.filter(Equipment.client_id.in_(demo_client_ids)).delete(
+            synchronize_session=False
+        )
+        Contract.query.filter(Contract.client_id.in_(demo_client_ids)).delete(
+            synchronize_session=False
+        )
+
+    Equipment.query.filter(Equipment.serial_number.like(f"{DEMO_EQUIPMENT_SERIAL_PREFIX}%")).delete(
+        synchronize_session=False
+    )
+    EquipmentTemplate.query.filter(
+        EquipmentTemplate.serial_number.like(f"{DEMO_TEMPLATE_SERIAL_PREFIX}%")
+    ).delete(synchronize_session=False)
 
     for c in demo_clients:
         db.session.delete(c)
 
-    Worker.query.filter(Worker.full_name.like(f"{DEMO_WORKER_PREFIX}%")).delete(synchronize_session=False)
+    Worker.query.filter(Worker.full_name.like(f"{DEMO_WORKER_PREFIX}%")).delete(
+        synchronize_session=False
+    )
     db.session.commit()
     return True

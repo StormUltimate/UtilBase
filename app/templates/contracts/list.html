@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Договоры{% endblock %}
+
+{% block tabs %}
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <span class="nav-link active"><i class="bi bi-file-earmark-text"></i> Договоры</span>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+    <div>
+        <h2 class="mb-1">Обзор договоров</h2>
+        <div class="text-muted small">Показатели по заявкам и напоминания по ТО/ТР оборудования</div>
+    </div>
+    <div class="d-flex flex-wrap align-items-end gap-2">
+        <a class="btn btn-success" href="{{ url_for('contracts.create_contract_wizard') }}">
+            <i class="bi bi-magic"></i> Мастер: новый договор
+        </a>
+        <form method="get" class="d-flex align-items-end gap-2">
+            <div>
+                <label class="form-label mb-1">Год</label>
+                <input class="form-control" type="number" min="2020" max="2100" name="year" value="{{ selected_year }}">
+            </div>
+            <div>
+                <label class="form-label mb-1">Статус договора</label>
+                <select name="contract_state" class="form-select">
+                    <option value="all" {% if contract_state == 'all' %}selected{% endif %}>Все</option>
+                    <option value="active" {% if contract_state == 'active' %}selected{% endif %}>Действующие</option>
+                    <option value="expired" {% if contract_state == 'expired' %}selected{% endif %}>Закончившиеся</option>
+                </select>
+            </div>
+            <div class="form-check mb-2 ms-1">
+                <input class="form-check-input" type="checkbox" name="only_issues" id="onlyIssues" value="1" {% if only_issues %}checked{% endif %}>
+                <label class="form-check-label small" for="onlyIssues">только с проблемами</label>
+            </div>
+            <div class="form-check mb-2 ms-1">
+                <input class="form-check-input" type="checkbox" name="only_overdue_totr" id="onlyOverdueTotr" value="1" {% if only_overdue_totr %}checked{% endif %}>
+                <label class="form-check-label small" for="onlyOverdueTotr">только пропущенные ТО/ТР</label>
+            </div>
+            <button class="btn btn-primary" type="submit">Показать</button>
+        </form>
+        <a class="btn btn-outline-success" href="{{ url_for('contracts.export_contracts', year=selected_year) }}">
+            <i class="bi bi-file-earmark-excel"></i> Экспорт
+        </a>
+        <form method="post" action="{{ url_for('contracts.import_contracts') }}" enctype="multipart/form-data" class="d-flex align-items-end gap-2">
+            <input type="file" name="file" class="form-control" accept=".xlsx" required>
+            <button class="btn btn-outline-primary" type="submit">
+                <i class="bi bi-upload"></i> Импорт
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Плановые заявки</div>
+                <div class="fs-5 fw-semibold">{{ summary.planned_closed }} / {{ summary.planned_total }}</div>
+                <div class="small">Выполнение: {{ '%.1f'|format(summary.planned_percent) }}%</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Общие заявки</div>
+                <div class="fs-5 fw-semibold">{{ summary.all_requests }}</div>
+                <div class="small">Аварийные: {{ summary.emergency }}, ремонтные: {{ summary.unplanned_repair }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Доход вне договора</div>
+                <div class="fs-5 fw-semibold">{{ '{:,.0f}'.format(summary.extra_money)|replace(',', ' ') }} ₽</div>
+                <div class="small">По не плановым заявкам</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Напоминания ТО/ТР</div>
+                <div class="fs-5 fw-semibold">{{ summary.upcoming }}</div>
+                <div class="small">Оборудование с ближайшей датой сервиса</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex align-items-center gap-2 mb-2">
+    <span class="badge bg-secondary">Всего: {{ summary.contracts }}</span>
+    <span class="badge bg-primary">По фильтру: {{ filtered_count }}</span>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover align-middle">
+        <thead>
+        <tr>
+            <th>Клиент</th>
+            <th>Тип договора</th>
+            <th>Срок</th>
+            <th>Плановые</th>
+            <th>Выполнение</th>
+            <th>Все заявки</th>
+            <th>Аварийные</th>
+            <th>Ремонтные</th>
+            <th>Вне договора</th>
+            <th>ТО/ТР</th>
+            <th>Действия</th>
+            <th>ID</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+            <tr>
+                <td>
+                    {% if row.contract.client %}
+                        {% if row.overdue_equipment_count or row.overdue_planned_count %}
+                            <span class="me-1">
+                                {% if row.overdue_equipment_count %}
+                                    <span class="badge bg-danger" title="Пропущено ТО/ТР">ТО {{ row.overdue_equipment_count }}</span>
+                                {% endif %}
+                                {% if row.overdue_planned_count %}
+                                    <span class="badge bg-warning text-dark" title="Просроченные плановые заявки">ПЛ {{ row.overdue_planned_count }}</span>
+                                {% endif %}
+                            </span>
+                        {% endif %}
+                        <a href="{{ url_for('contracts.view_contract', contract_id=row.contract.id, next=request.full_path) }}">
+                            {{ row.contract.client.full_name or ('Клиент #' ~ row.contract.client.id) }}
+                        </a>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>{{ row.contract.contract_type or '—' }}</td>
+                <td>
+                    {{ row.contract.start_date.strftime('%d.%m.%Y') if row.contract.start_date else '—' }}
+                    —
+                    {{ row.contract.end_date.strftime('%d.%m.%Y') if row.contract.end_date else '—' }}
+                </td>
+                <td>{{ row.planned_closed }} / {{ row.planned_total }}</td>
+                <td>{{ '%.1f'|format(row.planned_percent) }}%</td>
+                <td>{{ row.all_requests }}</td>
+                <td>{{ row.emergency_count }}</td>
+                <td>{{ row.unplanned_repair_count }}</td>
+                <td>{{ '{:,.0f}'.format(row.extra_money)|replace(',', ' ') }} ₽</td>
+                <td>
+                    {% if row.upcoming_count %}
+                        <span class="badge bg-warning text-dark">{{ row.upcoming_count }}</span>
+                        <div class="small text-muted mt-1">
+                            {% for eq in row.upcoming_equipment %}
+                                {{ eq.type or 'Оборудование' }} ({{ eq.next_service_date.strftime('%d.%m.%Y') if eq.next_service_date else '—' }}){% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <span class="text-muted">нет</span>
+                    {% endif %}
+                </td>
+                <td class="text-nowrap">
+                    {% if row.contract.client %}
+                    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('clients.client_detail', client_id=row.contract.client.id) }}">
+                        Карточка клиента
+                    </a>
+                    {% else %}
+                    <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td>#{{ row.contract.id }}</td>
+            </tr>
+        {% else %}
+            <tr>
+                <td colspan="12" class="text-center text-muted py-4">Договоры не найдены</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
